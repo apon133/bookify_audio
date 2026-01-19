@@ -1,11 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'models/models.dart';
 import 'screens/home_screen.dart';
 import 'screens/book_screen.dart';
 import 'screens/player_screen.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize Hive
+  await Hive.initFlutter();
+
+  // Register Hive adapters
+  Hive.registerAdapter(AuthorAdapter());
+  Hive.registerAdapter(BookAdapter());
+  Hive.registerAdapter(EpisodeAdapter());
+
+  // Open Hive boxes
+  await Hive.openBox<String>('cache');
+  await Hive.openBox<Map<dynamic, dynamic>>('downloads');
+
   runApp(const ProviderScope(child: MyApp()));
 }
 

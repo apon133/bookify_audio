@@ -35,6 +35,9 @@ migrate_working_dir/
 # /E:/Extansion/exprement/bookify_audio/experiment/
 /experiment/
 
+# Generated files
+*.g.dart
+
 # Symbolication related
 app.*.symbols
 

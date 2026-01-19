@@ -1,7 +1,19 @@
+import 'package:hive/hive.dart';
+
+part 'episode.g.dart';
+
+@HiveType(typeId: 2)
 class Episode {
+  @HiveField(0)
   final String id;
+
+  @HiveField(1)
   final String bookName;
+
+  @HiveField(2)
   final String audioUrl;
+
+  @HiveField(3)
   final String voiceOwner;
 
   Episode({
@@ -29,4 +41,13 @@ class Episode {
       voiceOwner: json['voice_owner'] ?? '',
     );
   }
-} 
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'book_name': bookName,
+      'audio_url': audioUrl,
+      'voice_owner': voiceOwner,
+    };
+  }
+}
