@@ -13,19 +13,13 @@ class AuthorsNotifier extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
 
-  Future<void> fetchAuthors({bool forceRefresh = false}) async {
+  Future<void> fetchAuthors({String? languageCode}) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
 
     try {
-      if (forceRefresh) {
-        // Force a refresh from the API
-        _authors = await _apiService.fetchAuthors(forceRefresh: true);
-      } else {
-        // Use cached data if available
-        _authors = await _apiService.fetchAuthors();
-      }
+      _authors = await _apiService.fetchAuthors(languageCode: languageCode);
       _isLoading = false;
       notifyListeners();
     } catch (e) {

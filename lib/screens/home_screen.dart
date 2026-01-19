@@ -2,9 +2,9 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/authors_provider.dart';
+import '../services/api_service.dart';
 import '../widgets/mini_player.dart';
 import 'author_screen.dart';
-import 'dart:async';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -14,62 +14,64 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
-  bool _isRefreshEnabled = true;
-  Timer? _refreshCooldownTimer;
+  final ApiService _apiService = ApiService();
+  String _selectedLanguage = '';
 
   @override
   void initState() {
     super.initState();
-    // Fetch authors when the screen loads
+    // Get current language and fetch authors
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      setState(() {
+        _selectedLanguage = _apiService.currentLanguage;
+      });
       ref.read(authorsProvider).fetchAuthors();
     });
   }
 
-  @override
-  void dispose() {
-    _refreshCooldownTimer?.cancel();
-    super.dispose();
-  }
+  Future<void> _changeLanguage(String languageCode) async {
+    if (languageCode == _selectedLanguage) return;
 
-  void _refreshData() {
-    if (_isRefreshEnabled) {
-      setState(() {
-        _isRefreshEnabled = false;
-      });
+    setState(() {
+      _selectedLanguage = languageCode;
+    });
 
-      // Refresh the data
-      ref.read(authorsProvider).fetchAuthors(forceRefresh: true);
+    // Save language preference
+    await _apiService.setLanguage(languageCode);
 
-      // Start cooldown timer
-      _refreshCooldownTimer = Timer(const Duration(seconds: 15), () {
-        if (mounted) {
-          setState(() {
-            _isRefreshEnabled = true;
-          });
-        }
-      });
-    }
+    // Reload authors with new language
+    ref.read(authorsProvider).fetchAuthors(languageCode: languageCode);
   }
 
   @override
   Widget build(BuildContext context) {
     final authorsNotifier = ref.watch(authorsProvider);
+    final availableLanguages = _apiService.getAvailableLanguages();
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Bookify Audio'),
         elevation: 0,
         actions: [
-          IconButton(
-            icon: Icon(
-              Icons.refresh,
-              color: _isRefreshEnabled ? null : Colors.grey,
+          // Language dropdown
+          Padding(
+            padding: const EdgeInsets.only(right: 16.0),
+            child: DropdownButton<String>(
+              value: _selectedLanguage.isEmpty ? null : _selectedLanguage,
+              underline: const SizedBox(),
+              dropdownColor: Theme.of(context).colorScheme.surface,
+              items: availableLanguages.map((lang) {
+                return DropdownMenuItem<String>(
+                  value: lang['code'],
+                  child: Text(lang['name'] ?? ''),
+                );
+              }).toList(),
+              onChanged: (String? newValue) {
+                if (newValue != null) {
+                  _changeLanguage(newValue);
+                }
+              },
             ),
-            onPressed: _isRefreshEnabled ? _refreshData : null,
-            tooltip: _isRefreshEnabled
-                ? 'Refresh data'
-                : 'Refresh available in a moment',
           ),
         ],
       ),

@@ -1,18 +1,39 @@
 import 'dart:convert';
 import 'package:flutter/services.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import '../models/models.dart';
 
 class ApiService {
-  static const String localJsonPath = 'assets/data/authors.json';
+  static const String defaultLanguage = 'bn'; // Bengali as default
 
-  /// Fetch authors from local JSON file
+  // Get settings box
+  Box get _settingsBox => Hive.box('settings');
+
+  // Get current language
+  String get currentLanguage =>
+      _settingsBox.get('language', defaultValue: defaultLanguage);
+
+  // Set language
+  Future<void> setLanguage(String languageCode) async {
+    await _settingsBox.put('language', languageCode);
+  }
+
+  // Get JSON path for current language
+  String _getJsonPath(String languageCode) {
+    return 'assets/data/authors_$languageCode.json';
+  }
+
+  /// Fetch authors from local JSON file based on selected language
   /// This is completely offline - no internet required!
-  Future<List<Author>> fetchAuthors({bool forceRefresh = false}) async {
+  Future<List<Author>> fetchAuthors({String? languageCode}) async {
     try {
-      print('Loading authors from local JSON file...');
+      final lang = languageCode ?? currentLanguage;
+      final jsonPath = _getJsonPath(lang);
+
+      print('Loading authors from: $jsonPath');
 
       // Load the JSON file from assets
-      final String jsonString = await rootBundle.loadString(localJsonPath);
+      final String jsonString = await rootBundle.loadString(jsonPath);
 
       // Parse the JSON
       final List<dynamic> decodedData = jsonDecode(jsonString) as List<dynamic>;
@@ -29,5 +50,13 @@ class ApiService {
       print('Error loading from local JSON: $e');
       rethrow;
     }
+  }
+
+  /// Get list of available languages
+  List<Map<String, String>> getAvailableLanguages() {
+    return [
+      {'code': 'bn', 'name': 'বাংলা'},
+      {'code': 'en', 'name': 'English'},
+    ];
   }
 }
