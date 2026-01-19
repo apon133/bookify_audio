@@ -1,16 +1,17 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/models.dart';
 import '../providers/audio_player_provider.dart';
 import '../widgets/mini_player.dart';
 
-class BookScreen extends StatelessWidget {
+class BookScreen extends ConsumerWidget {
   const BookScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final Map<String, dynamic> args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final Map<String, dynamic> args =
+        ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
     final Book book = args['book'] as Book;
     final Author author = args['author'] as Author;
 
@@ -49,7 +50,6 @@ class BookScreen extends StatelessWidget {
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(8),
                             child: CachedNetworkImage(
-                              
                               fit: BoxFit.cover,
                               errorWidget: (context, error, stackTrace) {
                                 return Container(
@@ -60,13 +60,14 @@ class BookScreen extends StatelessWidget {
                                     color: Colors.grey,
                                   ),
                                 );
-                              }, imageUrl: book.cover,
+                              },
+                              imageUrl: book.cover,
                             ),
                           ),
                         ),
                       ),
                       const SizedBox(width: 16),
-                      
+
                       // Book info
                       Expanded(
                         child: Column(
@@ -102,7 +103,7 @@ class BookScreen extends StatelessWidget {
                   ),
                 ),
               ),
-              
+
               // Episodes section header
               SliverToBoxAdapter(
                 child: Padding(
@@ -118,14 +119,16 @@ class BookScreen extends StatelessWidget {
                       ),
                       const Spacer(),
                       if (book.episodes.isNotEmpty)
-                        Consumer<AudioPlayerProvider>(
-                          builder: (context, audioPlayerProvider, child) {
+                        Consumer(
+                          builder: (context, ref, child) {
+                            final audioPlayerNotifier =
+                                ref.watch(audioPlayerProvider);
                             return TextButton.icon(
                               icon: const Icon(Icons.play_circle_filled),
                               label: const Text('Play All'),
                               onPressed: () {
                                 // Play the first episode
-                                audioPlayerProvider.playEpisode(
+                                audioPlayerNotifier.playEpisode(
                                   book.episodes.first,
                                   book,
                                   author,
@@ -138,18 +141,23 @@ class BookScreen extends StatelessWidget {
                   ),
                 ),
               ),
-              
+
               // Episodes list
               SliverList(
                 delegate: SliverChildBuilderDelegate(
                   (context, index) {
                     final episode = book.episodes[index];
-                    return Consumer<AudioPlayerProvider>(
-                      builder: (context, audioPlayerProvider, child) {
-                        final isCurrentEpisode = audioPlayerProvider.currentEpisode?.id == episode.id;
-                        
+                    return Consumer(
+                      builder: (context, ref, child) {
+                        final audioPlayerNotifier =
+                            ref.watch(audioPlayerProvider);
+                        final isCurrentEpisode =
+                            audioPlayerNotifier.currentEpisode?.id ==
+                                episode.id;
+
                         return ListTile(
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 8),
                           leading: Container(
                             width: 40,
                             height: 40,
@@ -160,7 +168,7 @@ class BookScreen extends StatelessWidget {
                               shape: BoxShape.circle,
                             ),
                             child: Icon(
-                              isCurrentEpisode && audioPlayerProvider.isPlaying
+                              isCurrentEpisode && audioPlayerNotifier.isPlaying
                                   ? Icons.pause
                                   : Icons.play_arrow,
                               color: isCurrentEpisode
@@ -171,19 +179,22 @@ class BookScreen extends StatelessWidget {
                           title: Text(
                             episode.bookName,
                             style: TextStyle(
-                              fontWeight: isCurrentEpisode ? FontWeight.bold : FontWeight.normal,
+                              fontWeight: isCurrentEpisode
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
                             ),
                           ),
                           subtitle: Text('Voice: ${episode.voiceOwner}'),
                           onTap: () {
                             if (isCurrentEpisode) {
-                              if (audioPlayerProvider.isPlaying) {
-                                audioPlayerProvider.pause();
+                              if (audioPlayerNotifier.isPlaying) {
+                                audioPlayerNotifier.pause();
                               } else {
-                                audioPlayerProvider.play();
+                                audioPlayerNotifier.play();
                               }
                             } else {
-                              audioPlayerProvider.playEpisode(episode, book, author);
+                              audioPlayerNotifier.playEpisode(
+                                  episode, book, author);
                             }
                           },
                         );
@@ -193,14 +204,14 @@ class BookScreen extends StatelessWidget {
                   childCount: book.episodes.length,
                 ),
               ),
-              
+
               // Bottom padding for mini player
               const SliverPadding(
                 padding: EdgeInsets.only(bottom: 80),
               ),
             ],
           ),
-          
+
           // Mini player at the bottom
           const Positioned(
             left: 0,
@@ -212,4 +223,4 @@ class BookScreen extends StatelessWidget {
       ),
     );
   }
-} 
+}

@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/models.dart';
 import '../services/audio_player_service.dart';
 import '../services/download_service.dart';
 
-class AudioPlayerProvider extends ChangeNotifier {
+class AudioPlayerNotifier extends ChangeNotifier {
   final AudioPlayerService _audioPlayerService = AudioPlayerService();
   final DownloadService _downloadService = DownloadService();
-  
+
   // Getters to expose the service state
   AudioPlayerState get state => _audioPlayerService.state;
   bool get isPlaying => _audioPlayerService.isPlaying;
@@ -20,66 +21,67 @@ class AudioPlayerProvider extends ChangeNotifier {
   bool get isDownloaded => _audioPlayerService.state.isDownloaded;
   bool get isDownloading => _audioPlayerService.state.isDownloading;
   double get downloadProgress => _audioPlayerService.state.downloadProgress;
-  
+
   // Mini player visibility
   bool _isMiniPlayerVisible = false;
-  bool get isMiniPlayerVisible => _isMiniPlayerVisible && currentEpisode != null;
-  
-  AudioPlayerProvider() {
+  bool get isMiniPlayerVisible =>
+      _isMiniPlayerVisible && currentEpisode != null;
+
+  AudioPlayerNotifier() {
     _audioPlayerService.stateStream.addListener(_onStateChanged);
   }
-  
+
   void _onStateChanged() {
     // Show mini player when an episode is loaded
     if (currentEpisode != null && !_isMiniPlayerVisible) {
       _isMiniPlayerVisible = true;
     }
-    
+
     notifyListeners();
   }
-  
+
   // Player control methods
   Future<void> playEpisode(Episode episode, Book book, Author author) async {
     await _audioPlayerService.playEpisode(episode, book, author);
     _isMiniPlayerVisible = true;
     notifyListeners();
   }
-  
+
   Future<void> play() async {
     await _audioPlayerService.play();
     notifyListeners();
   }
-  
+
   Future<void> pause() async {
     await _audioPlayerService.pause();
     notifyListeners();
   }
-  
+
   Future<void> seek(Duration position) async {
     await _audioPlayerService.seek(position);
     notifyListeners();
   }
-  
+
   Future<void> setPlaybackSpeed(double speed) async {
     await _audioPlayerService.setPlaybackSpeed(speed);
     notifyListeners();
   }
-  
+
   Future<void> stop() async {
     await _audioPlayerService.stop();
     notifyListeners();
   }
-  
+
   void hideMiniPlayer() {
     // Ensure we set this to false regardless of other conditions
     _isMiniPlayerVisible = false;
-    
+
     // Force a rebuild of the UI
     WidgetsBinding.instance.addPostFrameCallback((_) {
       notifyListeners();
     });
   }
-  
+
   void showMiniPlayer() {
     if (currentEpisode != null) {
       _isMiniPlayerVisible = true;
@@ -98,8 +100,8 @@ class AudioPlayerProvider extends ChangeNotifier {
       // Update the UI to reflect that this episode is downloaded
       final localFilePath = await _downloadService.getLocalFilePath(episode);
       _audioPlayerService.updateDownloadStatus(
-        false, 
-        1.0, 
+        false,
+        1.0,
         isDownloaded: true,
         localFilePath: localFilePath,
       );
@@ -115,7 +117,7 @@ class AudioPlayerProvider extends ChangeNotifier {
       episode,
       onProgressUpdate: (task) {
         _audioPlayerService.updateDownloadStatus(
-          true, 
+          true,
           task.progress,
           isDownloaded: false,
         );
@@ -128,20 +130,20 @@ class AudioPlayerProvider extends ChangeNotifier {
     if (isDownloaded) {
       final localFilePath = await _downloadService.getLocalFilePath(episode);
       _audioPlayerService.updateDownloadStatus(
-        false, 
-        1.0, 
+        false,
+        1.0,
         isDownloaded: true,
         localFilePath: localFilePath,
       );
     } else {
       _audioPlayerService.updateDownloadStatus(
-        false, 
-        0.0, 
+        false,
+        0.0,
         isDownloaded: false,
         localFilePath: null,
       );
     }
-    
+
     notifyListeners();
   }
 
@@ -149,8 +151,8 @@ class AudioPlayerProvider extends ChangeNotifier {
     final success = await _downloadService.deleteDownloadedEpisode(episode);
     if (success) {
       _audioPlayerService.updateDownloadStatus(
-        false, 
-        0.0, 
+        false,
+        0.0,
         isDownloaded: false,
         localFilePath: null,
       );
@@ -165,7 +167,7 @@ class AudioPlayerProvider extends ChangeNotifier {
       notifyListeners();
     }
   }
-  
+
   @override
   void dispose() {
     _audioPlayerService.stateStream.removeListener(_onStateChanged);
@@ -173,4 +175,9 @@ class AudioPlayerProvider extends ChangeNotifier {
     _downloadService.dispose();
     super.dispose();
   }
-} 
+}
+
+// Riverpod provider
+final audioPlayerProvider = ChangeNotifierProvider<AudioPlayerNotifier>((ref) {
+  return AudioPlayerNotifier();
+});

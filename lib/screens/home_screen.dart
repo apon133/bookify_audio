@@ -1,19 +1,19 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/authors_provider.dart';
 import '../widgets/mini_player.dart';
 import 'author_screen.dart';
 import 'dart:async';
 
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends ConsumerState<HomeScreen> {
   bool _isRefreshEnabled = true;
   Timer? _refreshCooldownTimer;
 
@@ -22,7 +22,7 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     // Fetch authors when the screen loads
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<AuthorsProvider>(context, listen: false).fetchAuthors();
+      ref.read(authorsProvider).fetchAuthors();
     });
   }
 
@@ -37,10 +37,10 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() {
         _isRefreshEnabled = false;
       });
-      
+
       // Refresh the data
-      Provider.of<AuthorsProvider>(context, listen: false).fetchAuthors(forceRefresh: true);
-      
+      ref.read(authorsProvider).fetchAuthors(forceRefresh: true);
+
       // Start cooldown timer
       _refreshCooldownTimer = Timer(const Duration(seconds: 15), () {
         if (mounted) {
@@ -54,6 +54,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final authorsNotifier = ref.watch(authorsProvider);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Bookify Audio'),
@@ -65,34 +67,34 @@ class _HomeScreenState extends State<HomeScreen> {
               color: _isRefreshEnabled ? null : Colors.grey,
             ),
             onPressed: _isRefreshEnabled ? _refreshData : null,
-            tooltip: _isRefreshEnabled 
-                ? 'Refresh data' 
+            tooltip: _isRefreshEnabled
+                ? 'Refresh data'
                 : 'Refresh available in a moment',
           ),
         ],
       ),
-      body: Consumer<AuthorsProvider>(
-        builder: (context, authorsProvider, child) {
-          if (authorsProvider.isLoading) {
+      body: Builder(
+        builder: (context) {
+          if (authorsNotifier.isLoading) {
             return const Center(
               child: CircularProgressIndicator(),
             );
           }
 
-          if (authorsProvider.error != null) {
+          if (authorsNotifier.error != null) {
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    'Error: ${authorsProvider.error}',
+                    'Error: ${authorsNotifier.error}',
                     style: const TextStyle(color: Colors.red),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 16),
                   ElevatedButton(
                     onPressed: () {
-                      authorsProvider.fetchAuthors();
+                      authorsNotifier.fetchAuthors();
                     },
                     child: const Text('Retry'),
                   ),
@@ -101,7 +103,7 @@ class _HomeScreenState extends State<HomeScreen> {
             );
           }
 
-          if (authorsProvider.authors.isEmpty) {
+          if (authorsNotifier.authors.isEmpty) {
             return const Center(
               child: Text('No authors found'),
             );
@@ -110,10 +112,11 @@ class _HomeScreenState extends State<HomeScreen> {
           return Stack(
             children: [
               ListView.builder(
-                padding: const EdgeInsets.only(bottom: 80), // Add padding for mini player
-                itemCount: authorsProvider.authors.length,
+                padding: const EdgeInsets.only(
+                    bottom: 80), // Add padding for mini player
+                itemCount: authorsNotifier.authors.length,
                 itemBuilder: (context, index) {
-                  final author = authorsProvider.authors[index];
+                  final author = authorsNotifier.authors[index];
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -124,7 +127,8 @@ class _HomeScreenState extends State<HomeScreen> {
                           children: [
                             CircleAvatar(
                               radius: 20,
-                              backgroundImage: CachedNetworkImageProvider(author.image),
+                              backgroundImage:
+                                  CachedNetworkImageProvider(author.image),
                               onBackgroundImageError: (_, __) {},
                               backgroundColor: Colors.grey[300],
                               child: author.image.isEmpty
@@ -154,7 +158,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (context) => AuthorScreen(author: author),
+                                    builder: (context) =>
+                                        AuthorScreen(author: author),
                                   ),
                                 );
                               },
@@ -163,7 +168,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           ],
                         ),
                       ),
-                      
+
                       // Books horizontal list
                       SizedBox(
                         height: 220,
@@ -186,7 +191,8 @@ class _HomeScreenState extends State<HomeScreen> {
                               },
                               child: Container(
                                 width: 120,
-                                margin: const EdgeInsets.symmetric(horizontal: 8),
+                                margin:
+                                    const EdgeInsets.symmetric(horizontal: 8),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
@@ -196,20 +202,24 @@ class _HomeScreenState extends State<HomeScreen> {
                                       child: Container(
                                         height: 170,
                                         decoration: BoxDecoration(
-                                          borderRadius: BorderRadius.circular(8),
+                                          borderRadius:
+                                              BorderRadius.circular(8),
                                           boxShadow: [
                                             BoxShadow(
-                                              color: Colors.black.withOpacity(0.1),
+                                              color:
+                                                  Colors.black.withOpacity(0.1),
                                               blurRadius: 5,
                                               offset: const Offset(0, 3),
                                             ),
                                           ],
                                         ),
                                         child: ClipRRect(
-                                          borderRadius: BorderRadius.circular(8),
+                                          borderRadius:
+                                              BorderRadius.circular(8),
                                           child: CachedNetworkImage(
                                             fit: BoxFit.cover,
-                                            errorWidget: (context, error, stackTrace) {
+                                            errorWidget:
+                                                (context, error, stackTrace) {
                                               return Container(
                                                 color: Colors.grey[300],
                                                 child: const Icon(
@@ -218,14 +228,15 @@ class _HomeScreenState extends State<HomeScreen> {
                                                   color: Colors.grey,
                                                 ),
                                               );
-                                            }, imageUrl: book.cover,
+                                            },
+                                            imageUrl: book.cover,
                                           ),
                                         ),
                                       ),
                                     ),
-                                    
+
                                     const SizedBox(height: 8),
-                                    
+
                                     // Book title
                                     Text(
                                       book.title,
@@ -243,16 +254,15 @@ class _HomeScreenState extends State<HomeScreen> {
                           },
                         ),
                       ),
-                      
+
                       const SizedBox(height: 8),
-                      
                     ],
                   );
                 },
               ),
-              
+
               // Mini player at the bottom
-              Positioned(
+              const Positioned(
                 left: 0,
                 right: 0,
                 bottom: 0,

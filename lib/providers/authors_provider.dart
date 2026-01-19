@@ -1,8 +1,9 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/author.dart';
 import '../services/api_service.dart';
 
-class AuthorsProvider with ChangeNotifier {
+class AuthorsNotifier extends ChangeNotifier {
   final ApiService _apiService = ApiService();
   List<Author> _authors = [];
   bool _isLoading = false;
@@ -34,3 +35,8 @@ class AuthorsProvider with ChangeNotifier {
     }
   }
 }
+
+// Riverpod provider
+final authorsProvider = ChangeNotifierProvider<AuthorsNotifier>((ref) {
+  return AuthorsNotifier();
+});
