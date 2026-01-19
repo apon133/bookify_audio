@@ -1,20 +1,9 @@
-import 'package:hive/hive.dart';
 import 'episode.dart';
 
-part 'book.g.dart';
-
-@HiveType(typeId: 1)
 class Book {
-  @HiveField(0)
   final String id;
-
-  @HiveField(1)
   final String title;
-
-  @HiveField(2)
   final String cover;
-
-  @HiveField(3)
   final List<Episode> episodes;
 
   Book({

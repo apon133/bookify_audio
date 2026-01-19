@@ -3,7 +3,6 @@ import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 import '../models/models.dart';
-import 'hive_download_service.dart';
 
 class DownloadTask {
   final String title;
@@ -24,7 +23,6 @@ class DownloadTask {
 class DownloadService {
   final YoutubeExplode _yt = YoutubeExplode();
   final Map<String, DownloadTask> _activeTasks = {};
-  final HiveDownloadService _hiveDownloadService = HiveDownloadService();
   bool _isCanceled = false;
 
   // Singleton pattern
@@ -66,37 +64,10 @@ class DownloadService {
   // Check if an episode is downloaded
   Future<bool> isEpisodeDownloaded(Episode episode) async {
     try {
-      // Check Hive metadata first
-      if (_hiveDownloadService.isEpisodeDownloaded(episode.id)) {
-        final metadata = _hiveDownloadService.getDownloadMetadata(episode.id);
-        if (metadata != null) {
-          final filePath = metadata['filePath'] as String?;
-          if (filePath != null && File(filePath).existsSync()) {
-            return true;
-          } else {
-            // File doesn't exist, remove metadata
-            await _hiveDownloadService.deleteDownloadMetadata(episode.id);
-          }
-        }
-      }
-
-      // Fallback: check file system
       final downloadsDir = await getDownloadsDirectory();
       final filePath =
           '${downloadsDir.path}/${_sanitizeFileName(episode.bookName)}_${episode.id}.mp3';
-      final exists = File(filePath).existsSync();
-
-      // If file exists but no metadata, add metadata
-      if (exists) {
-        await _hiveDownloadService.saveDownloadMetadata(
-          episodeId: episode.id,
-          episodeName: episode.bookName,
-          filePath: filePath,
-          downloadedAt: DateTime.now(),
-        );
-      }
-
-      return exists;
+      return File(filePath).existsSync();
     } catch (e) {
       debugPrint('Error checking if episode is downloaded: $e');
       return false;
@@ -165,13 +136,9 @@ class DownloadService {
         final file = File(localFilePath);
         if (file.existsSync()) {
           await file.delete();
-          // Remove from Hive metadata
-          await _hiveDownloadService.deleteDownloadMetadata(episode.id);
           return true;
         }
       }
-      // Also remove metadata if file doesn't exist
-      await _hiveDownloadService.deleteDownloadMetadata(episode.id);
       return false;
     } catch (e) {
       debugPrint('Error deleting downloaded episode: $e');
@@ -232,14 +199,6 @@ class DownloadService {
 
       if (!_isCanceled) {
         task.status = 'Completed';
-
-        // Save download metadata to Hive
-        await _hiveDownloadService.saveDownloadMetadata(
-          episodeId: episode.id,
-          episodeName: episode.bookName,
-          filePath: filePath,
-          downloadedAt: DateTime.now(),
-        );
 
         if (onProgressUpdate != null) {
           onProgressUpdate(task);

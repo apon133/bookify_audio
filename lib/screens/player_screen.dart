@@ -266,8 +266,10 @@ class PlayerScreen extends ConsumerWidget {
           foregroundColor: Colors.white,
         ),
         onPressed: () async {
+          // Capture the ScaffoldMessenger before async operation
+          final messenger = ScaffoldMessenger.of(context);
           await audioPlayerNotifier.deleteDownloadedEpisode(episode);
-          ScaffoldMessenger.of(context).showSnackBar(
+          messenger.showSnackBar(
             const SnackBar(content: Text('Download deleted')),
           );
         },
@@ -299,8 +301,10 @@ class PlayerScreen extends ConsumerWidget {
             icon: const Icon(Icons.cancel),
             label: const Text('Cancel'),
             onPressed: () {
+              // Capture the ScaffoldMessenger before operation
+              final messenger = ScaffoldMessenger.of(context);
               audioPlayerNotifier.cancelDownload();
-              ScaffoldMessenger.of(context).showSnackBar(
+              messenger.showSnackBar(
                 const SnackBar(content: Text('Download canceled')),
               );
             },
@@ -324,8 +328,10 @@ class PlayerScreen extends ConsumerWidget {
               foregroundColor: Colors.white,
             ),
             onPressed: () async {
+              // Capture the ScaffoldMessenger before async operation
+              final messenger = ScaffoldMessenger.of(context);
               await audioPlayerNotifier.deleteDownloadedEpisode(episode);
-              ScaffoldMessenger.of(context).showSnackBar(
+              messenger.showSnackBar(
                 const SnackBar(content: Text('Download deleted')),
               );
             },
@@ -336,9 +342,11 @@ class PlayerScreen extends ConsumerWidget {
           icon: const Icon(Icons.download),
           label: const Text('Download for Offline'),
           onPressed: () async {
+            // Capture the ScaffoldMessenger before async operation
+            final messenger = ScaffoldMessenger.of(context);
             await audioPlayerNotifier.downloadEpisode(episode);
             if (audioPlayerNotifier.isDownloaded) {
-              ScaffoldMessenger.of(context).showSnackBar(
+              messenger.showSnackBar(
                 const SnackBar(content: Text('Download complete')),
               );
             }

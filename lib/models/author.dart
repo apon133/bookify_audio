@@ -1,20 +1,9 @@
-import 'package:hive/hive.dart';
 import 'book.dart';
 
-part 'author.g.dart';
-
-@HiveType(typeId: 0)
 class Author {
-  @HiveField(0)
   final String id;
-
-  @HiveField(1)
   final String name;
-
-  @HiveField(2)
   final String image;
-
-  @HiveField(3)
   final List<Book> books;
 
   Author({
