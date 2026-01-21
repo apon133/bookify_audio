@@ -5,6 +5,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'screens/home_screen.dart';
 import 'screens/book_screen.dart';
 import 'screens/player_screen.dart';
+import 'screens/search_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -52,6 +53,7 @@ class MyApp extends StatelessWidget {
         '/': (context) => const HomeScreen(),
         '/book': (context) => const BookScreen(),
         '/player': (context) => const PlayerScreen(),
+        '/search': (context) => const SearchScreen(),
       },
     );
   }

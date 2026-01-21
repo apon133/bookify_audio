@@ -53,6 +53,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         title: const Text('Bookify Audio'),
         elevation: 0,
         actions: [
+          // Search button
+          IconButton(
+            icon: const Icon(Icons.search),
+            tooltip: 'Search',
+            onPressed: () {
+              Navigator.pushNamed(context, '/search');
+            },
+          ),
+
           // Language dropdown
           Padding(
             padding: const EdgeInsets.only(right: 16.0),
