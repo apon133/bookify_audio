@@ -16,14 +16,16 @@ class HomeScreen extends ConsumerStatefulWidget {
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   final ApiService _apiService = ApiService();
   String _selectedLanguage = '';
+  String _selectedBrowseMode = '';
 
   @override
   void initState() {
     super.initState();
-    // Get current language and fetch authors
+    // Get current language, browse mode and fetch authors
     WidgetsBinding.instance.addPostFrameCallback((_) {
       setState(() {
         _selectedLanguage = _apiService.currentLanguage;
+        _selectedBrowseMode = _apiService.currentBrowseMode;
       });
       ref.read(authorsProvider).fetchAuthors();
     });
@@ -43,10 +45,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     ref.read(authorsProvider).fetchAuthors(languageCode: languageCode);
   }
 
+  Future<void> _changeBrowseMode(String browseMode) async {
+    if (browseMode == _selectedBrowseMode) return;
+
+    setState(() {
+      _selectedBrowseMode = browseMode;
+    });
+
+    // Save browse mode preference
+    await _apiService.setBrowseMode(browseMode);
+
+    // Reload authors with new browse mode
+    ref.read(authorsProvider).fetchAuthors(browseMode: browseMode);
+  }
+
   @override
   Widget build(BuildContext context) {
     final authorsNotifier = ref.watch(authorsProvider);
     final availableLanguages = _apiService.getAvailableLanguages();
+    final availableBrowseModes = _apiService.getAvailableBrowseModes();
 
     return Scaffold(
       appBar: AppBar(
@@ -60,6 +77,28 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             onPressed: () {
               Navigator.pushNamed(context, '/search');
             },
+          ),
+
+          // Browse mode dropdown
+          Padding(
+            padding: const EdgeInsets.only(right: 8.0),
+            child: DropdownButton<String>(
+              value: _selectedBrowseMode.isEmpty ? null : _selectedBrowseMode,
+              underline: const SizedBox(),
+              dropdownColor: Theme.of(context).colorScheme.surface,
+              icon: const Icon(Icons.filter_list),
+              items: availableBrowseModes.map((mode) {
+                return DropdownMenuItem<String>(
+                  value: mode['code'],
+                  child: Text(mode['name'] ?? ''),
+                );
+              }).toList(),
+              onChanged: (String? newValue) {
+                if (newValue != null) {
+                  _changeBrowseMode(newValue);
+                }
+              },
+            ),
           ),
 
           // Language dropdown
@@ -128,6 +167,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 itemCount: authorsNotifier.authors.length,
                 itemBuilder: (context, index) {
                   final author = authorsNotifier.authors[index];
+
+                  // Debug: Print author/genre info
+                  print('=== HOME SCREEN AUTHOR #$index ===');
+                  print('Author/Genre Name: ${author.name}');
+                  print('Author/Genre Image URL: ${author.image}');
+                  print('Number of books: ${author.books.length}');
+                  if (author.books.isNotEmpty) {
+                    print('First book title: ${author.books[0].title}');
+                    print('First book author field: ${author.books[0].author}');
+                    print(
+                        'First book authorImage field: ${author.books[0].authorImage}');
+                  }
+                  print('================================');
+
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -140,7 +193,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               radius: 20,
                               backgroundImage:
                                   CachedNetworkImageProvider(author.image),
-                              onBackgroundImageError: (_, __) {},
+                              onBackgroundImageError: (exception, stackTrace) {
+                                print(
+                                    '❌ Failed to load author/genre image: ${author.image}');
+                                print('Error: $exception');
+                              },
                               backgroundColor: Colors.grey[300],
                               child: author.image.isEmpty
                                   ? Text(
@@ -258,6 +315,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                       maxLines: 2,
                                       overflow: TextOverflow.ellipsis,
                                     ),
+
+                                    // Author name (only shown in genre mode)
+                                    if (book.author != null)
+                                      Padding(
+                                        padding: const EdgeInsets.only(top: 2),
+                                        child: Text(
+                                          book.author!,
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            color: Colors.grey[600],
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
                                   ],
                                 ),
                               ),

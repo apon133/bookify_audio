@@ -15,6 +15,19 @@ class BookScreen extends ConsumerWidget {
     final Book book = args['book'] as Book;
     final Author author = args['author'] as Author;
 
+    // Debug: Print author info
+    print('=== BOOK SCREEN DEBUG ===');
+    print('Book Title: ${book.title}');
+    print('Book.author (name): ${book.author}');
+    print('Book.authorImage (URL): ${book.authorImage}');
+    print('Author.name: ${author.name}');
+    print('Author.image (URL): ${author.image}');
+    print(
+        'Should show author section: ${book.author != null && book.authorImage != null}');
+    print('book.author != null: ${book.author != null}');
+    print('book.authorImage != null: ${book.authorImage != null}');
+    print('========================');
+
     return Scaffold(
       appBar: AppBar(
         title: Text(book.title),
@@ -28,77 +41,145 @@ class BookScreen extends ConsumerWidget {
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  child: Column(
                     children: [
-                      // Book cover
-                      Hero(
-                        tag: 'book-cover-${book.id}',
-                        child: Container(
-                          width: 120,
-                          height: 180,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(8),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.2),
-                                blurRadius: 10,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: CachedNetworkImage(
-                              fit: BoxFit.cover,
-                              errorWidget: (context, error, stackTrace) {
-                                return Container(
-                                  color: Colors.grey[300],
-                                  child: const Icon(
-                                    Icons.book,
-                                    size: 40,
-                                    color: Colors.grey,
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Book cover
+                          Hero(
+                            tag: 'book-cover-${book.id}',
+                            child: Container(
+                              width: 120,
+                              height: 180,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(8),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.2),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 4),
                                   ),
-                                );
-                              },
-                              imageUrl: book.cover,
+                                ],
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: CachedNetworkImage(
+                                  fit: BoxFit.cover,
+                                  errorWidget: (context, error, stackTrace) {
+                                    return Container(
+                                      color: Colors.grey[300],
+                                      child: const Icon(
+                                        Icons.book,
+                                        size: 40,
+                                        color: Colors.grey,
+                                      ),
+                                    );
+                                  },
+                                  imageUrl: book.cover,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+
+                          // Book info
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  book.title,
+                                  style: const TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  book.author ?? author.name,
+                                  style: TextStyle(
+                                    color: Colors.grey[700],
+                                    fontSize: 16,
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  '${book.episodes.length} episode${book.episodes.length != 1 ? 's' : ''}',
+                                  style: TextStyle(
+                                    color: Colors.grey[600],
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      // Author info section (shown when in genre mode)
+                      if (book.author != null && book.authorImage != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 16),
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.grey[100],
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              children: [
+                                CircleAvatar(
+                                  radius: 24,
+                                  backgroundImage: CachedNetworkImageProvider(
+                                    book.authorImage!,
+                                  ),
+                                  onBackgroundImageError:
+                                      (exception, stackTrace) {
+                                    print(
+                                        '❌ Failed to load book authorImage: ${book.authorImage}');
+                                    print('Error: $exception');
+                                  },
+                                  backgroundColor: Colors.grey[300],
+                                  child: book.authorImage!.isEmpty
+                                      ? Text(
+                                          book.author!.isNotEmpty
+                                              ? book.author![0]
+                                              : '?',
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        )
+                                      : null,
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Author',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.grey[600],
+                                        ),
+                                      ),
+                                      Text(
+                                        book.author!,
+                                        style: const TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 16),
-
-                      // Book info
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              book.title,
-                              style: const TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              author.name,
-                              style: TextStyle(
-                                color: Colors.grey[700],
-                                fontSize: 16,
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              '${book.episodes.length} episode${book.episodes.length != 1 ? 's' : ''}',
-                              style: TextStyle(
-                                color: Colors.grey[600],
-                                fontSize: 14,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
                     ],
                   ),
                 ),

@@ -13,13 +13,16 @@ class AuthorsNotifier extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
 
-  Future<void> fetchAuthors({String? languageCode}) async {
+  Future<void> fetchAuthors({String? languageCode, String? browseMode}) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
 
     try {
-      _authors = await _apiService.fetchAuthors(languageCode: languageCode);
+      _authors = await _apiService.fetchAuthors(
+        languageCode: languageCode,
+        browseMode: browseMode,
+      );
       _isLoading = false;
       notifyListeners();
     } catch (e) {
