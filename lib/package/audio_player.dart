@@ -132,7 +132,33 @@ class BookifyAudioPlayerController
       return;
     }
 
-    value = value.copyWith(
+    // Stop any existing playback first
+    if (_webViewController != null && _isWebViewReady) {
+      try {
+        await _webViewController?.evaluateJavascript(
+          source: 'document.querySelector("video")?.pause();',
+        );
+        // Reset the video element to ensure clean state
+        await _webViewController?.evaluateJavascript(
+          source: '''
+            var video = document.querySelector("video");
+            if (video) {
+              video.pause();
+              video.currentTime = 0;
+              video.src = "";
+            }
+          ''',
+        );
+      } catch (e) {
+        // Ignore errors if video element doesn't exist yet
+      }
+    }
+
+    // Cancel existing progress timer
+    _progressTimer?.cancel();
+
+    // Reset state before loading new video
+    value = BookifyAudioPlayerState(
       isLoading: true,
       videoId: videoId,
       error: null,
@@ -145,6 +171,38 @@ class BookifyAudioPlayerController
   }
 
   Future<void> play() async {
+    // Try to play with retry logic in case video isn't ready
+    for (int i = 0; i < 3; i++) {
+      try {
+        final result = await _webViewController?.evaluateJavascript(
+          source: '''
+            (function() {
+              var video = document.querySelector("video");
+              if (video) {
+                video.play();
+                return true;
+              }
+              return false;
+            })();
+          ''',
+        );
+
+        if (result == true) {
+          await Future.delayed(const Duration(milliseconds: 200));
+          _updateProgress();
+          return;
+        }
+      } catch (e) {
+        // Ignore and retry
+      }
+
+      // Wait before retrying
+      if (i < 2) {
+        await Future.delayed(const Duration(milliseconds: 500));
+      }
+    }
+
+    // Final attempt with simple play command
     await _webViewController?.evaluateJavascript(
       source: 'document.querySelector("video")?.play();',
     );
@@ -360,11 +418,37 @@ class _BookifyAudioWebPlayerState extends State<BookifyAudioWebPlayer>
             widget.controller.value =
                 widget.controller.value.copyWith(isLoading: false);
             await widget.controller._injectStyles();
-            widget.controller._startProgressTimer();
 
-            // Auto-play after load
-            await Future.delayed(const Duration(seconds: 2));
-            await widget.controller.play();
+            // Wait for video element to be ready
+            await Future.delayed(const Duration(milliseconds: 500));
+
+            // Check if video element exists before starting timer
+            try {
+              final videoExists = await controller.evaluateJavascript(
+                source: 'document.querySelector("video") !== null',
+              );
+
+              if (videoExists == true) {
+                widget.controller._startProgressTimer();
+
+                // Auto-play after load with longer delay to ensure ads are handled
+                await Future.delayed(const Duration(seconds: 2));
+
+                // Verify video is still ready before playing
+                final stillReady = await controller.evaluateJavascript(
+                  source: 'document.querySelector("video") !== null',
+                );
+
+                if (stillReady == true) {
+                  await widget.controller.play();
+                }
+              }
+            } catch (e) {
+              // If there's an error, still try to start the timer and play
+              widget.controller._startProgressTimer();
+              await Future.delayed(const Duration(seconds: 2));
+              await widget.controller.play();
+            }
           },
           onProgressChanged: (controller, progress) {
             if (progress > 50) {

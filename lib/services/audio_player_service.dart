@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import '../models/models.dart';
 import '../services/download_service.dart';
+import '../services/history_service.dart';
 import '../package/audio_player.dart';
 
 class AudioPlayerService {
@@ -29,6 +30,9 @@ class AudioPlayerService {
   final _stateController = ValueNotifier<AudioPlayerState>(AudioPlayerState());
   ValueNotifier<AudioPlayerState> get stateStream => _stateController;
 
+  // History service
+  final HistoryService _historyService = HistoryService();
+
   AudioPlayerService() {
     _initListeners();
   }
@@ -36,6 +40,7 @@ class AudioPlayerService {
   void _initListeners() {
     _controller.addListener(() {
       final controllerState = _controller.value;
+
       _updateState(
         isPlaying: controllerState.isPlaying,
         isLoading: controllerState.isLoading,
@@ -98,21 +103,19 @@ class AudioPlayerService {
 
   Future<void> playEpisode(Episode episode, Book book, Author author) async {
     try {
-      // Check if the same episode is already playing
-      if (currentEpisode != null &&
-          currentEpisode!.id == episode.id &&
-          isPlaying) {
-        return;
+      // Always stop the current playback to ensure clean state
+      if (currentEpisode != null) {
+        await _controller.pause();
+        // Give more time for the previous audio to fully stop
+        await Future.delayed(const Duration(milliseconds: 500));
       }
 
-      // If a different episode is playing, stop it first
-      if (isPlaying) {
-        await stop();
-      }
-
-      // Reset download status when loading a new episode
+      // Reset ALL state when loading a new episode, including position
       _updateState(
         isLoading: true,
+        isPlaying: false,
+        position: Duration.zero, // Reset position to zero
+        duration: Duration.zero, // Reset duration to zero
         currentEpisode: episode,
         currentBook: book,
         currentAuthor: author,
@@ -135,9 +138,35 @@ class AudioPlayerService {
         );
         // Note: For now, local file playback is not implemented in the WebView-based controller.
         // If local playback is needed, we would need a different approach for offline.
-      } else {
-        // Load YouTube URL directly into the WebView controller
-        await _controller.load(episode.audioUrl);
+      }
+
+      // Always load the URL to ensure WebView is properly initialized
+      await _controller.load(episode.audioUrl);
+
+      // Give the WebView more time to initialize and load the video
+      await Future.delayed(const Duration(milliseconds: 1000));
+
+      // Resume from saved position if exists (only for the same episode)
+      final historyItems = _historyService.getHistory(uniqueByBook: false);
+      final savedItem =
+          historyItems.where((i) => i.episode.id == episode.id).firstOrNull;
+
+      // Only seek if there's a saved position AND it's meaningful (> 5 seconds)
+      if (savedItem != null &&
+          !savedItem.isFinished &&
+          savedItem.position > 5) {
+        // Store the episode ID to verify it hasn't changed when seeking
+        final episodeIdToSeek = episode.id;
+        final positionToSeek = savedItem.position;
+
+        // Wait for the player to fully initialize before seeking
+        // Increased delay to ensure WebView and YouTube player are ready
+        Future.delayed(const Duration(seconds: 4), () {
+          // Only seek if we're still playing the same episode
+          if (currentEpisode?.id == episodeIdToSeek) {
+            _controller.seekTo(positionToSeek);
+          }
+        });
       }
 
       _updateState(isLoading: false, isPlaying: true);

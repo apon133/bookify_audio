@@ -3,8 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/models.dart';
 import '../services/audio_player_service.dart';
 import '../services/download_service.dart';
+import '../providers/history_provider.dart';
 
 class AudioPlayerNotifier extends ChangeNotifier {
+  final Ref _ref;
   final AudioPlayerService _audioPlayerService = AudioPlayerService();
   final DownloadService _downloadService = DownloadService();
 
@@ -26,17 +28,33 @@ class AudioPlayerNotifier extends ChangeNotifier {
 
   // Mini player visibility
   bool _isMiniPlayerVisible = false;
+  bool _manuallyClosed = false;
+
   bool get isMiniPlayerVisible =>
       _isMiniPlayerVisible && currentEpisode != null;
 
-  AudioPlayerNotifier() {
+  AudioPlayerNotifier(this._ref) {
     _audioPlayerService.stateStream.addListener(_onStateChanged);
   }
 
   void _onStateChanged() {
-    // Show mini player when an episode is loaded
-    if (currentEpisode != null && !_isMiniPlayerVisible) {
+    // Show mini player when an episode is loaded, unless it was manually closed
+    if (currentEpisode != null && !_isMiniPlayerVisible && !_manuallyClosed) {
       _isMiniPlayerVisible = true;
+    }
+
+    // Save history through the provider for reactivity
+    if (currentEpisode != null &&
+        currentBook != null &&
+        currentAuthor != null &&
+        duration.inSeconds > 0) {
+      _ref.read(historyProvider.notifier).savePosition(
+            currentEpisode!,
+            currentBook!,
+            currentAuthor!,
+            position.inSeconds.toDouble(),
+            duration.inSeconds.toDouble(),
+          );
     }
 
     notifyListeners();
@@ -44,6 +62,7 @@ class AudioPlayerNotifier extends ChangeNotifier {
 
   // Player control methods
   Future<void> playEpisode(Episode episode, Book book, Author author) async {
+    _manuallyClosed = false; // Reset when playing a new episode
     await _audioPlayerService.playEpisode(episode, book, author);
     _isMiniPlayerVisible = true;
     notifyListeners();
@@ -77,6 +96,7 @@ class AudioPlayerNotifier extends ChangeNotifier {
   void hideMiniPlayer() {
     // Ensure we set this to false regardless of other conditions
     _isMiniPlayerVisible = false;
+    _manuallyClosed = true;
 
     // Force a rebuild of the UI
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -181,5 +201,5 @@ class AudioPlayerNotifier extends ChangeNotifier {
 
 // Riverpod provider
 final audioPlayerProvider = ChangeNotifierProvider<AudioPlayerNotifier>((ref) {
-  return AudioPlayerNotifier();
+  return AudioPlayerNotifier(ref);
 });

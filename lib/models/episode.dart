@@ -32,7 +32,7 @@ class Episode {
 
   Map<String, dynamic> toJson() {
     return {
-      'id': id,
+      '_id': id,
       'book_name': bookName,
       'audio_url': audioUrl,
       'voice_owner': voiceOwner,

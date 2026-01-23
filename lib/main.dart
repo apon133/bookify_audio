@@ -5,10 +5,13 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:bookify_audio/package/audio_player.dart';
 import 'package:bookify_audio/providers/audio_player_provider.dart';
+import 'package:bookify_audio/services/history_service.dart';
 import 'screens/home_screen.dart';
 import 'screens/book_screen.dart';
 import 'screens/player_screen.dart';
 import 'screens/search_screen.dart';
+import 'screens/main_screen.dart';
+import 'screens/settings_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -16,9 +19,10 @@ void main() async {
   // Initialize Hive
   await Hive.initFlutter();
 
-  // Open settings box for language preference
+  // Open boxes
   await Hive.openBox('settings');
   await Hive.openBox('player_data');
+  await HistoryService.init();
 
   // Lock to portrait mode for better audio-book experience
   await SystemChrome.setPreferredOrientations([
@@ -60,10 +64,12 @@ class MyApp extends ConsumerWidget {
       themeMode: ThemeMode.system,
       initialRoute: '/',
       routes: {
-        '/': (context) => const HomeScreen(),
+        '/': (context) => const MainScreen(), // MainScreen handles BottomNav
+        '/home': (context) => const HomeScreen(),
         '/book': (context) => const BookScreen(),
         '/player': (context) => const PlayerScreen(),
         '/search': (context) => const SearchScreen(),
+        '/settings': (context) => const SettingsScreen(),
       },
       builder: (context, child) {
         final playerProvider = ref.watch(audioPlayerProvider);

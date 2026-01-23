@@ -70,20 +70,28 @@ class MiniPlayer extends ConsumerWidget {
                     // Book cover
                     ClipRRect(
                       borderRadius: BorderRadius.circular(4),
-                      child: CachedNetworkImage(
-                        width: 50,
-                        height: 50,
-                        fit: BoxFit.cover,
-                        errorWidget: (context, error, stackTrace) {
-                          return Container(
-                            width: 50,
-                            height: 50,
-                            color: Colors.grey[300],
-                            child: const Icon(Icons.book, color: Colors.grey),
-                          );
-                        },
-                        imageUrl: book.cover,
-                      ),
+                      child: book.cover.isNotEmpty
+                          ? CachedNetworkImage(
+                              width: 50,
+                              height: 50,
+                              fit: BoxFit.cover,
+                              errorWidget: (context, error, stackTrace) {
+                                return Container(
+                                  width: 50,
+                                  height: 50,
+                                  color: Colors.grey[300],
+                                  child: const Icon(Icons.book,
+                                      color: Colors.grey),
+                                );
+                              },
+                              imageUrl: book.cover,
+                            )
+                          : Container(
+                              width: 50,
+                              height: 50,
+                              color: Colors.grey[300],
+                              child: const Icon(Icons.book, color: Colors.grey),
+                            ),
                     ),
                     const SizedBox(width: 12),
 

@@ -29,7 +29,8 @@ class Author {
       name: json['name'] ?? '',
       image: json['image'] ?? '',
       books: (json['books'] as List<dynamic>?)
-              ?.map((bookJson) => Book.fromJson(bookJson))
+              ?.map((bookJson) =>
+                  Book.fromJson(Map<String, dynamic>.from(bookJson as Map)))
               .toList() ??
           [],
     );
@@ -37,7 +38,7 @@ class Author {
 
   Map<String, dynamic> toJson() {
     return {
-      'id': id,
+      '_id': id,
       'name': name,
       'image': image,
       'books': books.map((b) => b.toJson()).toList(),

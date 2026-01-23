@@ -64,20 +64,26 @@ class BookScreen extends ConsumerWidget {
                               ),
                               child: ClipRRect(
                                 borderRadius: BorderRadius.circular(8),
-                                child: CachedNetworkImage(
-                                  fit: BoxFit.cover,
-                                  errorWidget: (context, error, stackTrace) {
-                                    return Container(
-                                      color: Colors.grey[300],
-                                      child: const Icon(
-                                        Icons.book,
-                                        size: 40,
-                                        color: Colors.grey,
-                                      ),
-                                    );
-                                  },
-                                  imageUrl: book.cover,
-                                ),
+                                child: book.cover.isNotEmpty
+                                    ? CachedNetworkImage(
+                                        fit: BoxFit.cover,
+                                        errorWidget:
+                                            (context, error, stackTrace) {
+                                          return Container(
+                                            color: Colors.grey[300],
+                                            child: const Icon(
+                                              Icons.book,
+                                              size: 40,
+                                              color: Colors.grey,
+                                            ),
+                                          );
+                                        },
+                                        imageUrl: book.cover,
+                                      )
+                                    : Container(
+                                        color: Colors.grey[300],
+                                        child: const Icon(Icons.book,
+                                            size: 40, color: Colors.grey)),
                               ),
                             ),
                           ),
@@ -131,19 +137,17 @@ class BookScreen extends ConsumerWidget {
                               children: [
                                 CircleAvatar(
                                   radius: 24,
-                                  backgroundImage: CachedNetworkImageProvider(
-                                    book.authorImage!,
-                                  ),
-                                  onBackgroundImageError:
-                                      (exception, stackTrace) {
-                                    print(
-                                        '❌ Failed to load book authorImage: ${book.authorImage}');
-                                    print('Error: $exception');
-                                  },
+                                  backgroundImage: (book.authorImage != null &&
+                                          book.authorImage!.isNotEmpty)
+                                      ? CachedNetworkImageProvider(
+                                          book.authorImage!)
+                                      : null,
                                   backgroundColor: Colors.grey[300],
-                                  child: book.authorImage!.isEmpty
+                                  child: (book.authorImage == null ||
+                                          book.authorImage!.isEmpty)
                                       ? Text(
-                                          book.author!.isNotEmpty
+                                          book.author != null &&
+                                                  book.author!.isNotEmpty
                                               ? book.author![0]
                                               : '?',
                                           style: const TextStyle(

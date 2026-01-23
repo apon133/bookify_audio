@@ -28,8 +28,9 @@ class AuthorScreen extends StatelessWidget {
                       // Author image
                       CircleAvatar(
                         radius: 50,
-                        backgroundImage: NetworkImage(author.image),
-                        onBackgroundImageError: (_, __) {},
+                        backgroundImage: author.image.isNotEmpty
+                            ? CachedNetworkImageProvider(author.image)
+                            : null,
                         backgroundColor: Colors.grey[300],
                         child: author.image.isEmpty
                             ? Text(
@@ -116,22 +117,31 @@ class AuthorScreen extends StatelessWidget {
                                   ),
                                   child: ClipRRect(
                                     borderRadius: BorderRadius.circular(8),
-                                    child: CachedNetworkImage(
-                                      fit: BoxFit.cover,
-                                      width: double.infinity,
-                                      errorWidget:
-                                          (context, error, stackTrace) {
-                                        return Container(
-                                          color: Colors.grey[300],
-                                          child: const Icon(
-                                            Icons.book,
-                                            size: 40,
-                                            color: Colors.grey,
+                                    child: book.cover.isNotEmpty
+                                        ? CachedNetworkImage(
+                                            fit: BoxFit.cover,
+                                            width: double.infinity,
+                                            errorWidget:
+                                                (context, error, stackTrace) {
+                                              return Container(
+                                                color: Colors.grey[300],
+                                                child: const Icon(
+                                                  Icons.book,
+                                                  size: 40,
+                                                  color: Colors.grey,
+                                                ),
+                                              );
+                                            },
+                                            imageUrl: book.cover,
+                                          )
+                                        : Container(
+                                            color: Colors.grey[300],
+                                            child: const Icon(
+                                              Icons.book,
+                                              size: 40,
+                                              color: Colors.grey,
+                                            ),
                                           ),
-                                        );
-                                      },
-                                      imageUrl: book.cover,
-                                    ),
                                   ),
                                 ),
                               ),
