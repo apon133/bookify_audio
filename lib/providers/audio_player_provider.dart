@@ -8,6 +8,8 @@ class AudioPlayerNotifier extends ChangeNotifier {
   final AudioPlayerService _audioPlayerService = AudioPlayerService();
   final DownloadService _downloadService = DownloadService();
 
+  AudioPlayerService get service => _audioPlayerService;
+
   // Getters to expose the service state
   AudioPlayerState get state => _audioPlayerService.state;
   bool get isPlaying => _audioPlayerService.isPlaying;

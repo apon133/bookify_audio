@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:bookify_audio/package/audio_player.dart';
+import 'package:bookify_audio/providers/audio_player_provider.dart';
 import 'screens/home_screen.dart';
 import 'screens/book_screen.dart';
 import 'screens/player_screen.dart';
@@ -15,15 +18,22 @@ void main() async {
 
   // Open settings box for language preference
   await Hive.openBox('settings');
+  await Hive.openBox('player_data');
+
+  // Lock to portrait mode for better audio-book experience
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
 
   runApp(const ProviderScope(child: MyApp()));
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends ConsumerWidget {
   const MyApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return MaterialApp(
       title: 'Bookify Audio',
       debugShowCheckedModeBanner: false,
@@ -54,6 +64,17 @@ class MyApp extends StatelessWidget {
         '/book': (context) => const BookScreen(),
         '/player': (context) => const PlayerScreen(),
         '/search': (context) => const SearchScreen(),
+      },
+      builder: (context, child) {
+        final playerProvider = ref.watch(audioPlayerProvider);
+        return Stack(
+          children: [
+            if (child != null) child,
+            BookifyAudioWebPlayer(
+              controller: playerProvider.service.controller,
+            ),
+          ],
+        );
       },
     );
   }

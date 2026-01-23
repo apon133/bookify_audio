@@ -1,16 +1,12 @@
-import 'package:audio_service/audio_service.dart';
 import 'package:flutter/foundation.dart';
-import 'package:youtube_explode_dart/youtube_explode_dart.dart';
-import 'package:just_audio/just_audio.dart';
 import '../models/models.dart';
 import '../services/download_service.dart';
+import '../package/audio_player.dart';
 
 class AudioPlayerService {
-  // YouTube extractor
-  final YoutubeExplode _youtubeExplode = YoutubeExplode();
-
-  // Audio player
-  final AudioPlayer _player = AudioPlayer();
+  // Custom audio player controller (WebView based)
+  final BookifyAudioPlayerController _controller =
+      BookifyAudioPlayerController();
 
   // Download service
   final DownloadService _downloadService = DownloadService();
@@ -27,6 +23,7 @@ class AudioPlayerService {
   Episode? get currentEpisode => _state.currentEpisode;
   Book? get currentBook => _state.currentBook;
   Author? get currentAuthor => _state.currentAuthor;
+  BookifyAudioPlayerController get controller => _controller;
 
   // Stream controllers for state updates
   final _stateController = ValueNotifier<AudioPlayerState>(AudioPlayerState());
@@ -37,29 +34,16 @@ class AudioPlayerService {
   }
 
   void _initListeners() {
-    // Position updates
-    _player.positionStream.listen((position) {
-      _updateState(position: position);
-    });
-
-    // Duration updates
-    _player.durationStream.listen((duration) {
-      if (duration != null) {
-        _updateState(duration: duration);
-      }
-    });
-
-    // Playback state updates
-    _player.playerStateStream.listen((state) {
-      _updateState(isPlaying: state.playing);
-
-      // Update loading state based on processing state
-      if (state.processingState == ProcessingState.loading ||
-          state.processingState == ProcessingState.buffering) {
-        _updateState(isLoading: true);
-      } else {
-        _updateState(isLoading: false);
-      }
+    _controller.addListener(() {
+      final controllerState = _controller.value;
+      _updateState(
+        isPlaying: controllerState.isPlaying,
+        isLoading: controllerState.isLoading,
+        position: Duration(
+            milliseconds: (controllerState.currentTime * 1000).toInt()),
+        duration:
+            Duration(milliseconds: (controllerState.duration * 1000).toInt()),
+      );
     });
   }
 
@@ -99,7 +83,7 @@ class AudioPlayerService {
 
   // Update download status
   void updateDownloadStatus(
-    bool isDownloading, 
+    bool isDownloading,
     double progress, {
     bool? isDownloaded,
     String? localFilePath,
@@ -115,12 +99,12 @@ class AudioPlayerService {
   Future<void> playEpisode(Episode episode, Book book, Author author) async {
     try {
       // Check if the same episode is already playing
-      if (currentEpisode != null && 
-          currentEpisode!.id == episode.id && 
+      if (currentEpisode != null &&
+          currentEpisode!.id == episode.id &&
           isPlaying) {
         return;
       }
-      
+
       // If a different episode is playing, stop it first
       if (isPlaying) {
         await stop();
@@ -141,7 +125,6 @@ class AudioPlayerService {
       // Check if the episode is downloaded
       final isDownloaded = await _downloadService.isEpisodeDownloaded(episode);
       String? localFilePath;
-      String? audioUrl;
 
       if (isDownloaded) {
         // Use local file if downloaded
@@ -150,44 +133,13 @@ class AudioPlayerService {
           isDownloaded: true,
           localFilePath: localFilePath,
         );
+        // Note: For now, local file playback is not implemented in the WebView-based controller.
+        // If local playback is needed, we would need a different approach for offline.
       } else {
-        // Extract audio URL from YouTube
-        final videoId = _extractVideoId(episode.audioUrl);
-        if (videoId == null) {
-          throw Exception('Invalid YouTube URL');
-        }
-
-        final manifest = await _youtubeExplode.videos.streamsClient.getManifest(videoId);
-        final audioStreamInfo = manifest.audioOnly.withHighestBitrate();
-        audioUrl = audioStreamInfo.url.toString();
-        _updateState(audioUrl: audioUrl);
+        // Load YouTube URL directly into the WebView controller
+        await _controller.load(episode.audioUrl);
       }
 
-      // Set audio source and metadata
-      final audioSource = isDownloaded && localFilePath != null
-          ? AudioSource.uri(
-              Uri.file(localFilePath),
-              tag: MediaItem(
-                id: episode.id,
-                title: episode.bookName,
-                artist: author.name,
-                album: book.title,
-                artUri: Uri.parse(book.cover),
-              ),
-            )
-          : AudioSource.uri(
-              Uri.parse(audioUrl!),
-              tag: MediaItem(
-                id: episode.id,
-                title: episode.bookName,
-                artist: author.name,
-                album: book.title,
-                artUri: Uri.parse(book.cover),
-              ),
-            );
-
-      await _player.setAudioSource(audioSource);
-      await _player.play();
       _updateState(isLoading: false, isPlaying: true);
     } catch (e) {
       _updateState(isLoading: false, isPlaying: false);
@@ -195,37 +147,29 @@ class AudioPlayerService {
     }
   }
 
-  // Helper method to extract YouTube video ID
-  String? _extractVideoId(String url) {
-    try {
-      return VideoId.parseVideoId(url);
-    } catch (e) {
-      return null;
-    }
-  }
-
   Future<void> play() async {
-    await _player.play();
+    await _controller.play();
     _updateState(isPlaying: true);
   }
 
   Future<void> pause() async {
-    await _player.pause();
+    await _controller.pause();
     _updateState(isPlaying: false);
   }
 
   Future<void> seek(Duration position) async {
-    await _player.seek(position);
+    await _controller.seekTo(position.inSeconds.toDouble());
     _updateState(position: position);
   }
 
   Future<void> setPlaybackSpeed(double speed) async {
-    await _player.setSpeed(speed);
+    // Note: Web player currently doesn't expose playback speed, but could be added via JS
     _updateState(playbackSpeed: speed);
   }
 
   Future<void> stop() async {
-    await _player.stop();
+    await _controller
+        .pause(); // WebView player doesn't have a strict 'stop', pause is fine
     _updateState(
       isPlaying: false,
       position: Duration.zero,
@@ -233,7 +177,6 @@ class AudioPlayerService {
   }
 
   void dispose() {
-    _player.dispose();
-    _youtubeExplode.close();
+    _controller.dispose();
   }
 }
