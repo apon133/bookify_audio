@@ -101,7 +101,8 @@ class AudioPlayerService {
     );
   }
 
-  Future<void> playEpisode(Episode episode, Book book, Author author) async {
+  Future<void> playEpisode(Episode episode, Book book, Author author,
+      {double? savedPosition}) async {
     try {
       // Always stop the current playback to ensure clean state
       if (currentEpisode != null) {
@@ -110,11 +111,29 @@ class AudioPlayerService {
         await Future.delayed(const Duration(milliseconds: 500));
       }
 
-      // Reset ALL state when loading a new episode, including position
+      // Determine the position to seek to first (Hive History or provided)
+      double positionToSeek = savedPosition ?? 0.0;
+
+      // If no explicit position was provided, check Hive history
+      if (savedPosition == null) {
+        final historyItems = _historyService.getHistory(uniqueByBook: false);
+        final savedItem =
+            historyItems.where((i) => i.episode.id == episode.id).firstOrNull;
+
+        // Only use saved position if it's meaningful (> 5 seconds) and not finished
+        if (savedItem != null &&
+            !savedItem.isFinished &&
+            savedItem.position > 5) {
+          positionToSeek = savedItem.position;
+        }
+      }
+
+      // Reset ALL state when loading a new episode, but set position to what we expect
       _updateState(
         isLoading: true,
         isPlaying: false,
-        position: Duration.zero, // Reset position to zero
+        position:
+            Duration(seconds: positionToSeek.toInt()), // Optimistic position
         duration: Duration.zero, // Reset duration to zero
         currentEpisode: episode,
         currentBook: book,
@@ -136,38 +155,13 @@ class AudioPlayerService {
           isDownloaded: true,
           localFilePath: localFilePath,
         );
-        // Note: For now, local file playback is not implemented in the WebView-based controller.
-        // If local playback is needed, we would need a different approach for offline.
       }
 
-      // Always load the URL to ensure WebView is properly initialized
-      await _controller.load(episode.audioUrl);
+      // Always load the URL. Pass the startPosition to avoid starting at 0.
+      await _controller.load(episode.audioUrl, startPosition: positionToSeek);
 
       // Give the WebView more time to initialize and load the video
       await Future.delayed(const Duration(milliseconds: 1000));
-
-      // Resume from saved position if exists (only for the same episode)
-      final historyItems = _historyService.getHistory(uniqueByBook: false);
-      final savedItem =
-          historyItems.where((i) => i.episode.id == episode.id).firstOrNull;
-
-      // Only seek if there's a saved position AND it's meaningful (> 5 seconds)
-      if (savedItem != null &&
-          !savedItem.isFinished &&
-          savedItem.position > 5) {
-        // Store the episode ID to verify it hasn't changed when seeking
-        final episodeIdToSeek = episode.id;
-        final positionToSeek = savedItem.position;
-
-        // Wait for the player to fully initialize before seeking
-        // Increased delay to ensure WebView and YouTube player are ready
-        Future.delayed(const Duration(seconds: 4), () {
-          // Only seek if we're still playing the same episode
-          if (currentEpisode?.id == episodeIdToSeek) {
-            _controller.seekTo(positionToSeek);
-          }
-        });
-      }
 
       _updateState(isLoading: false, isPlaying: true);
     } catch (e) {
@@ -201,7 +195,7 @@ class AudioPlayerService {
         .pause(); // WebView player doesn't have a strict 'stop', pause is fine
     _updateState(
       isPlaying: false,
-      position: Duration.zero,
+      // position: Duration.zero, // REMOVED: Don't reset position so history is preserved
     );
   }
 

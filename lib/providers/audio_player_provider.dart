@@ -61,9 +61,11 @@ class AudioPlayerNotifier extends ChangeNotifier {
   }
 
   // Player control methods
-  Future<void> playEpisode(Episode episode, Book book, Author author) async {
+  Future<void> playEpisode(Episode episode, Book book, Author author,
+      {double? savedPosition}) async {
     _manuallyClosed = false; // Reset when playing a new episode
-    await _audioPlayerService.playEpisode(episode, book, author);
+    await _audioPlayerService.playEpisode(episode, book, author,
+        savedPosition: savedPosition);
     _isMiniPlayerVisible = true;
     notifyListeners();
   }

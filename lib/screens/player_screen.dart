@@ -153,14 +153,18 @@ class PlayerScreen extends ConsumerWidget {
 
                 // Progress slider
                 Slider(
-                  value: audioPlayerNotifier.position.inMilliseconds.toDouble(),
-                  min: 0,
-                  max: audioPlayerNotifier.duration.inMilliseconds > 0
-                      ? audioPlayerNotifier.duration.inMilliseconds.toDouble()
-                      : 1.0,
+                  value: audioPlayerNotifier.duration.inMilliseconds > 0
+                      ? audioPlayerNotifier.position.inMilliseconds /
+                          audioPlayerNotifier.duration.inMilliseconds
+                      : 0.0,
+                  min: 0.0,
+                  max: 1.0,
                   onChanged: (value) {
+                    final newPositionMs =
+                        (value * audioPlayerNotifier.duration.inMilliseconds)
+                            .toInt();
                     audioPlayerNotifier
-                        .seek(Duration(milliseconds: value.toInt()));
+                        .seek(Duration(milliseconds: newPositionMs));
                   },
                 ),
 

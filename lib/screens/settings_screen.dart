@@ -13,7 +13,6 @@ class SettingsScreen extends ConsumerStatefulWidget {
 }
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
-
   Widget _buildHistoryList(List<HistoryItem> items, String title,
       {bool isContinue = false}) {
     if (items.isEmpty) return const SizedBox.shrink();
@@ -58,9 +57,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
               return GestureDetector(
                 onTap: () {
-                  ref
-                      .read(audioPlayerProvider)
-                      .playEpisode(item.episode, item.book, item.author);
+                  // Pass the saved position when resuming from Continue Watching
+                  ref.read(audioPlayerProvider).playEpisode(
+                        item.episode,
+                        item.book,
+                        item.author,
+                        savedPosition: item.position,
+                      );
                 },
                 onLongPress: () {
                   showDialog(
