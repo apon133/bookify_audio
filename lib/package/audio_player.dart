@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
+import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 
 /// State of the [BookifyAudioPlayerController]
 class BookifyAudioPlayerState {
@@ -44,118 +44,41 @@ class BookifyAudioPlayerState {
   }
 }
 
-/// Controller for YouTube-based audio playback using a WebView
+/// Controller for YouTube-based audio playback using youtube_player_flutter
 class BookifyAudioPlayerController
     extends ValueNotifier<BookifyAudioPlayerState> {
-  InAppWebViewController? _webViewController;
+  YoutubePlayerController? _youtubeController;
   Timer? _progressTimer;
-  bool _isWebViewReady = false;
 
   BookifyAudioPlayerController() : super(BookifyAudioPlayerState());
 
-  // CSS to hide video and show only audio controls
-  static const String _hideVideoCSS = '''
-    /* Hide video element but keep audio playing */
-    video {
-      position: fixed !important;
-      width: 1px !important;
-      height: 1px !important;
-      opacity: 0 !important;
-      pointer-events: none !important;
-    }
-    
-    /* Hide video player container and UI elements */
-    .html5-video-player,
-    .ytp-cued-thumbnail-overlay,
-    .ytp-cued-thumbnail-overlay-image,
-    #player,
-    #movie_player,
-    .player-container,
-    ytm-single-column-watch-next-results-renderer,
-    ytm-item-section-renderer,
-    .related-chips-slot-wrapper,
-    .watch-below-the-player,
-    ytm-comments-entry-point-header-renderer,
-    ytm-comment-section-renderer,
-    .slim-video-information-renderer,
-    ytm-slim-video-information-renderer,
-    ytm-mobile-topbar-renderer,
-    #header,
-    #masthead-container,
-    .mobile-topbar-header,
-    ytm-pivot-bar-renderer,
-    #pivot-bar,
-    .tab-content,
-    ytm-single-column-browse-results-renderer,
-    ytm-browse,
-    .watch-next-feed,
-    ytm-compact-video-renderer,
-    .related-videos {
-      display: none !important;
-    }
-    
-    body, html {
-      background-color: #000000 !important;
-      overflow: hidden !important;
-    }
-    
-    * {
-      visibility: hidden !important;
-    }
-  ''';
+  YoutubePlayerController? get youtubeController => _youtubeController;
 
-  // JavaScript to control video playback
-  static const String _controlScript = '''
-    (function() {
-      var video = document.querySelector('video');
-      if (video) {
-        return {
-          currentTime: video.currentTime || 0,
-          duration: video.duration || 0,
-          paused: video.paused,
-          title: document.title || 'Unknown'
-        };
-      }
-      return null;
-    })();
-  ''';
-
-  void _onWebViewCreated(InAppWebViewController controller) {
-    _webViewController = controller;
-    _isWebViewReady = true;
-  }
-
-  Future<void> load(String url) async {
-    final videoId = _extractVideoId(url);
+  Future<void> load(String url, {double startPosition = 0}) async {
+    final videoId = YoutubePlayer.convertUrlToId(url);
     if (videoId == null) {
       value = value.copyWith(error: 'Invalid YouTube URL');
       return;
     }
 
-    // Stop any existing playback first
-    if (_webViewController != null && _isWebViewReady) {
-      try {
-        await _webViewController?.evaluateJavascript(
-          source: 'document.querySelector("video")?.pause();',
-        );
-        // Reset the video element to ensure clean state
-        await _webViewController?.evaluateJavascript(
-          source: '''
-            var video = document.querySelector("video");
-            if (video) {
-              video.pause();
-              video.currentTime = 0;
-              video.src = "";
-            }
-          ''',
-        );
-      } catch (e) {
-        // Ignore errors if video element doesn't exist yet
-      }
-    }
+    // Dispose previous controller if exists
+    if (_youtubeController != null) {
+      _progressTimer?.cancel();
 
-    // Cancel existing progress timer
-    _progressTimer?.cancel();
+      // Pause before disposing to ensure clean state
+      try {
+        _youtubeController?.pause();
+        await Future.delayed(const Duration(milliseconds: 300));
+      } catch (e) {
+        // Ignore errors during pause
+      }
+
+      _youtubeController?.dispose();
+      _youtubeController = null;
+
+      // Add delay to ensure complete disposal
+      await Future.delayed(const Duration(milliseconds: 200));
+    }
 
     // Reset state before loading new video
     value = BookifyAudioPlayerState(
@@ -164,58 +87,69 @@ class BookifyAudioPlayerController
       error: null,
     );
 
-    final mobileUrl = 'https://m.youtube.com/watch?v=$videoId';
-    await _webViewController?.loadUrl(
-      urlRequest: URLRequest(url: WebUri(mobileUrl)),
+    // Create new controller with low quality settings to save bandwidth
+    _youtubeController = YoutubePlayerController(
+      initialVideoId: videoId,
+      flags: YoutubePlayerFlags(
+        autoPlay: true,
+        mute: false,
+        // Force low quality to save bandwidth
+        forceHD: false,
+        // Enable background audio
+        enableCaption: false,
+        // Hide controls since we're using it as audio player
+        hideControls: true,
+        // Disable fullscreen
+        disableDragSeek: false,
+        // Loop if needed
+        loop: false,
+        // Start from saved position
+        startAt: startPosition.toInt(),
+      ),
+    );
+
+    // Listen to player state changes
+    _youtubeController!.addListener(_onPlayerStateChange);
+
+    // Start progress timer
+    _startProgressTimer();
+
+    // Notify listeners that controller has changed (triggers widget rebuild)
+    notifyListeners();
+
+    // Update loading state
+    await Future.delayed(const Duration(milliseconds: 500));
+    value = value.copyWith(isLoading: false);
+  }
+
+  void _onPlayerStateChange() {
+    if (_youtubeController == null) return;
+
+    final metadata = _youtubeController!.metadata;
+    final playerState = _youtubeController!.value;
+
+    value = value.copyWith(
+      isPlaying: playerState.isPlaying,
+      currentTime: playerState.position.inSeconds.toDouble(),
+      duration: metadata.duration.inSeconds.toDouble(),
+      title: metadata.title.isNotEmpty ? metadata.title : value.title,
     );
   }
 
   Future<void> play() async {
-    // Try to play with retry logic in case video isn't ready
-    for (int i = 0; i < 3; i++) {
-      try {
-        final result = await _webViewController?.evaluateJavascript(
-          source: '''
-            (function() {
-              var video = document.querySelector("video");
-              if (video) {
-                video.play();
-                return true;
-              }
-              return false;
-            })();
-          ''',
-        );
-
-        if (result == true) {
-          await Future.delayed(const Duration(milliseconds: 200));
-          _updateProgress();
-          return;
-        }
-      } catch (e) {
-        // Ignore and retry
-      }
-
-      // Wait before retrying
-      if (i < 2) {
-        await Future.delayed(const Duration(milliseconds: 500));
-      }
+    if (_youtubeController != null) {
+      _youtubeController!.play();
+      await Future.delayed(const Duration(milliseconds: 200));
+      _updateProgress();
     }
-
-    // Final attempt with simple play command
-    await _webViewController?.evaluateJavascript(
-      source: 'document.querySelector("video")?.play();',
-    );
-    await Future.delayed(const Duration(milliseconds: 200));
-    _updateProgress();
   }
 
   Future<void> pause() async {
-    await _webViewController?.evaluateJavascript(
-      source: 'document.querySelector("video")?.pause();',
-    );
-    await Future.delayed(const Duration(milliseconds: 200));
-    _updateProgress();
+    if (_youtubeController != null) {
+      _youtubeController!.pause();
+      await Future.delayed(const Duration(milliseconds: 200));
+      _updateProgress();
+    }
   }
 
   Future<void> togglePlayPause() async {
@@ -227,11 +161,10 @@ class BookifyAudioPlayerController
   }
 
   Future<void> seekTo(double seconds) async {
-    await _webViewController?.evaluateJavascript(
-      source:
-          'if(document.querySelector("video")) document.querySelector("video").currentTime = $seconds;',
-    );
-    value = value.copyWith(currentTime: seconds);
+    if (_youtubeController != null) {
+      _youtubeController!.seekTo(Duration(seconds: seconds.toInt()));
+      value = value.copyWith(currentTime: seconds);
+    }
   }
 
   Future<void> seekRelative(double seconds) async {
@@ -247,75 +180,32 @@ class BookifyAudioPlayerController
   }
 
   Future<void> _updateProgress() async {
-    if (_webViewController == null || !_isWebViewReady) return;
+    if (_youtubeController == null) return;
 
     try {
-      final result = await _webViewController?.evaluateJavascript(
-        source: _controlScript,
+      final playerState = _youtubeController!.value;
+      final metadata = _youtubeController!.metadata;
+
+      value = value.copyWith(
+        currentTime: playerState.position.inSeconds.toDouble(),
+        duration: metadata.duration.inSeconds.toDouble(),
+        isPlaying: playerState.isPlaying,
+        title: metadata.title.isNotEmpty ? metadata.title : value.title,
       );
-
-      if (result != null && result != 'null') {
-        final data = result as Map<dynamic, dynamic>?;
-        if (data != null) {
-          final title = data['title'] as String? ?? 'Unknown';
-          final cleanTitle = title.replaceAll(' - YouTube', '');
-
-          value = value.copyWith(
-            currentTime: (data['currentTime'] as num?)?.toDouble() ?? 0,
-            duration: (data['duration'] as num?)?.toDouble() ?? 0,
-            isPlaying: !(data['paused'] as bool? ?? true),
-            title: cleanTitle.isNotEmpty ? cleanTitle : null,
-          );
-        }
-      }
     } catch (e) {
       // Ignore errors during progress update
     }
   }
 
-  Future<void> _injectStyles() async {
-    await _webViewController?.evaluateJavascript(
-      source: '''
-      (function() {
-        var style = document.createElement('style');
-        style.type = 'text/css';
-        style.innerHTML = `$_hideVideoCSS`;
-        document.head.appendChild(style);
-        
-        var video = document.querySelector('video');
-        if (video) {
-          var player = document.querySelector('#movie_player');
-          if (player && player.setPlaybackQualityRange) {
-            player.setPlaybackQualityRange('tiny', 'tiny');
-          }
-        }
-      })();
-    ''',
-    );
-  }
-
-  String? _extractVideoId(String url) {
-    final patterns = [
-      RegExp(
-          r'(?:youtube\.com\/watch\?v=|youtu\.be\/|m\.youtube\.com\/watch\?v=)([a-zA-Z0-9_-]{11})'),
-      RegExp(r'youtube\.com\/embed\/([a-zA-Z0-9_-]{11})'),
-    ];
-
-    for (final pattern in patterns) {
-      final match = pattern.firstMatch(url);
-      if (match != null) return match.group(1);
-    }
-    return null;
-  }
-
   @override
   void dispose() {
     _progressTimer?.cancel();
+    _youtubeController?.dispose();
     super.dispose();
   }
 }
 
-/// The actual widget that hosts the hidden WebView.
+/// The actual widget that hosts the YouTube player (hidden for audio-only playback).
 /// Place this once in your widget tree (e.g., in a Stack or at the bottom of a Scaffold).
 class BookifyAudioWebPlayer extends StatefulWidget {
   final BookifyAudioPlayerController controller;
@@ -391,72 +281,49 @@ class _BookifyAudioWebPlayerState extends State<BookifyAudioWebPlayer>
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: 1,
-      height: 1,
-      child: Opacity(
-        opacity: 0,
-        child: InAppWebView(
-          initialSettings: InAppWebViewSettings(
-            mediaPlaybackRequiresUserGesture: false,
-            allowsInlineMediaPlayback: true,
-            javaScriptEnabled: true,
-            domStorageEnabled: true,
-            databaseEnabled: true,
-            cacheEnabled: true,
-            userAgent:
-                'Mozilla/5.0 (Linux; Android 10; SM-G975F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36',
-            allowBackgroundAudioPlaying: true,
-            preferredContentMode: UserPreferredContentMode.MOBILE,
+    // Listen to controller changes to rebuild when new episodes are loaded
+    return ValueListenableBuilder<BookifyAudioPlayerState>(
+      valueListenable: widget.controller,
+      builder: (context, state, child) {
+        // Hide the YouTube player widget (audio-only mode)
+        return SizedBox(
+          width: 1,
+          height: 1,
+          child: Opacity(
+            opacity: 0,
+            child: widget.controller.youtubeController != null
+                ? YoutubePlayer(
+                    key: ValueKey(
+                        state.videoId), // Force rebuild on video change
+                    controller: widget.controller.youtubeController!,
+                    showVideoProgressIndicator: false,
+                    progressIndicatorColor: Colors.transparent,
+                    progressColors: const ProgressBarColors(
+                      playedColor: Colors.transparent,
+                      handleColor: Colors.transparent,
+                    ),
+                    onReady: () {
+                      // Player is ready
+                      widget.controller.value =
+                          widget.controller.value.copyWith(
+                        isLoading: false,
+                      );
+                    },
+                    onEnded: (metadata) {
+                      // Video ended
+                      if (widget.onProgressSave != null &&
+                          widget.controller.value.videoId != null) {
+                        widget.onProgressSave!(
+                          widget.controller.value.videoId!,
+                          widget.controller.value.duration,
+                        );
+                      }
+                    },
+                  )
+                : const SizedBox.shrink(),
           ),
-          onWebViewCreated: widget.controller._onWebViewCreated,
-          onLoadStart: (controller, url) {
-            widget.controller.value =
-                widget.controller.value.copyWith(isLoading: true);
-          },
-          onLoadStop: (controller, url) async {
-            widget.controller.value =
-                widget.controller.value.copyWith(isLoading: false);
-            await widget.controller._injectStyles();
-
-            // Wait for video element to be ready
-            await Future.delayed(const Duration(milliseconds: 500));
-
-            // Check if video element exists before starting timer
-            try {
-              final videoExists = await controller.evaluateJavascript(
-                source: 'document.querySelector("video") !== null',
-              );
-
-              if (videoExists == true) {
-                widget.controller._startProgressTimer();
-
-                // Auto-play after load with longer delay to ensure ads are handled
-                await Future.delayed(const Duration(seconds: 2));
-
-                // Verify video is still ready before playing
-                final stillReady = await controller.evaluateJavascript(
-                  source: 'document.querySelector("video") !== null',
-                );
-
-                if (stillReady == true) {
-                  await widget.controller.play();
-                }
-              }
-            } catch (e) {
-              // If there's an error, still try to start the timer and play
-              widget.controller._startProgressTimer();
-              await Future.delayed(const Duration(seconds: 2));
-              await widget.controller.play();
-            }
-          },
-          onProgressChanged: (controller, progress) {
-            if (progress > 50) {
-              widget.controller._injectStyles();
-            }
-          },
-        ),
-      ),
+        );
+      },
     );
   }
 }

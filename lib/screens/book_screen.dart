@@ -15,19 +15,6 @@ class BookScreen extends ConsumerWidget {
     final Book book = args['book'] as Book;
     final Author author = args['author'] as Author;
 
-    // Debug: Print author info
-    print('=== BOOK SCREEN DEBUG ===');
-    print('Book Title: ${book.title}');
-    print('Book.author (name): ${book.author}');
-    print('Book.authorImage (URL): ${book.authorImage}');
-    print('Author.name: ${author.name}');
-    print('Author.image (URL): ${author.image}');
-    print(
-        'Should show author section: ${book.author != null && book.authorImage != null}');
-    print('book.author != null: ${book.author != null}');
-    print('book.authorImage != null: ${book.authorImage != null}');
-    print('========================');
-
     return Scaffold(
       appBar: AppBar(
         title: Text(book.title),
