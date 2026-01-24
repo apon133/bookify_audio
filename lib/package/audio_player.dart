@@ -262,7 +262,18 @@ class _BookifyAudioWebPlayerState extends State<BookifyAudioWebPlayer>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.paused) {
+      final shouldPlayInBackground = widget.controller.value.isPlaying;
       _startForegroundService();
+
+      // YouTube player automatically pauses when the app goes to the background.
+      // We force it to resume if it was playing.
+      if (shouldPlayInBackground) {
+        Future.delayed(const Duration(milliseconds: 250), () {
+          if (mounted) {
+            widget.controller.play();
+          }
+        });
+      }
     } else if (state == AppLifecycleState.resumed) {
       _stopForegroundService();
     }
