@@ -163,6 +163,9 @@ class AudioPlayerService {
       // Give the WebView more time to initialize and load the video
       await Future.delayed(const Duration(milliseconds: 1000));
 
+      // Explicitly play to ensure audio starts
+      await _controller.play();
+
       _updateState(isLoading: false, isPlaying: true);
     } catch (e) {
       _updateState(isLoading: false, isPlaying: false);

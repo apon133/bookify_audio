@@ -12,6 +12,7 @@ class BookifyAudioPlayerState {
   final String title;
   final String? videoId;
   final String? error;
+  final String? loadId; // Unique ID for each load to force player rebuild
 
   BookifyAudioPlayerState({
     this.isLoading = false,
@@ -21,6 +22,7 @@ class BookifyAudioPlayerState {
     this.title = 'No video loaded',
     this.videoId,
     this.error,
+    this.loadId,
   });
 
   BookifyAudioPlayerState copyWith({
@@ -31,6 +33,7 @@ class BookifyAudioPlayerState {
     String? title,
     String? videoId,
     String? error,
+    String? loadId,
   }) {
     return BookifyAudioPlayerState(
       isLoading: isLoading ?? this.isLoading,
@@ -40,6 +43,7 @@ class BookifyAudioPlayerState {
       title: title ?? this.title,
       videoId: videoId ?? this.videoId,
       error: error ?? this.error,
+      loadId: loadId ?? this.loadId,
     );
   }
 }
@@ -55,6 +59,7 @@ class BookifyAudioPlayerController
   YoutubePlayerController? get youtubeController => _youtubeController;
 
   Future<void> load(String url, {double startPosition = 0}) async {
+    print('Loading URL: $url at position: $startPosition');
     final videoId = YoutubePlayer.convertUrlToId(url);
     if (videoId == null) {
       value = value.copyWith(error: 'Invalid YouTube URL');
@@ -80,11 +85,15 @@ class BookifyAudioPlayerController
       await Future.delayed(const Duration(milliseconds: 200));
     }
 
+    final newLoadId = DateTime.now().toIso8601String();
+    print('Generated new loadId: $newLoadId for video: $videoId');
+
     // Reset state before loading new video
     value = BookifyAudioPlayerState(
       isLoading: true,
       videoId: videoId,
       error: null,
+      loadId: newLoadId,
     );
 
     // Create new controller with low quality settings to save bandwidth
@@ -285,6 +294,11 @@ class _BookifyAudioWebPlayerState extends State<BookifyAudioWebPlayer>
     return ValueListenableBuilder<BookifyAudioPlayerState>(
       valueListenable: widget.controller,
       builder: (context, state, child) {
+        if (state.isLoading) {
+          print(
+              'BookifyAudioWebPlayer: isLoading is true, showing loader or keeping previous state');
+        }
+
         // Hide the YouTube player widget (audio-only mode)
         return SizedBox(
           width: 1,
@@ -294,7 +308,7 @@ class _BookifyAudioWebPlayerState extends State<BookifyAudioWebPlayer>
             child: widget.controller.youtubeController != null
                 ? YoutubePlayer(
                     key: ValueKey(
-                        state.videoId), // Force rebuild on video change
+                        '${state.videoId}_${state.loadId}'), // Force rebuild on video change or reload
                     controller: widget.controller.youtubeController!,
                     showVideoProgressIndicator: false,
                     progressIndicatorColor: Colors.transparent,
