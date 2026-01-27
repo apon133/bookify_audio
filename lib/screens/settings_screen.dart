@@ -1,7 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../services/history_service.dart';
 import '../providers/audio_player_provider.dart';
 import '../providers/history_provider.dart';
 import '../providers/playlist_provider.dart';

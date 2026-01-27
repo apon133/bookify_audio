@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:hive_flutter/hive_flutter.dart';
 import 'package:bookify_audio/package/audio_player.dart';
 import 'package:bookify_audio/providers/audio_player_provider.dart';
 import 'package:bookify_audio/services/history_service.dart';
@@ -17,14 +16,9 @@ import 'screens/settings_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Hive
-  await Hive.initFlutter();
-
-  // Open boxes
-  await Hive.openBox('settings');
-  await Hive.openBox('player_data');
-  await HistoryService.init();
+  // Initialize Services (Isar)
   await PlaylistService.init();
+  await HistoryService.init();
 
   // Lock to portrait mode for better audio-book experience
   await SystemChrome.setPreferredOrientations([

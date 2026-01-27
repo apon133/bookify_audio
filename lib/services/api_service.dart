@@ -1,40 +1,58 @@
 import 'dart:convert';
 import 'package:flutter/services.dart';
-import 'package:hive_flutter/hive_flutter.dart';
+import 'package:isar/isar.dart';
 import '../models/models.dart';
+import '../models/isar_models.dart';
+import 'playlist_service.dart';
 
 class ApiService {
-  static const String defaultLanguage = 'bn'; // Bengali as default
-  static const String defaultBrowseMode = 'writer'; // writer or genre
+  static const String defaultLanguage = 'bn';
+  static const String defaultBrowseMode = 'writer';
 
-  // Get settings box
-  Box get _settingsBox => Hive.box('settings');
+  Isar get _isar => PlaylistService.isar;
 
-  // Get current language
-  String get currentLanguage =>
-      _settingsBox.get('language', defaultValue: defaultLanguage);
+  // Helper to get or create settings
+  AppSettingsEntity _getSettings() {
+    final settings = _isar.appSettingsEntitys.getBySettingsIdSync('default');
+    if (settings == null) {
+      final newSettings = AppSettingsEntity();
+      _isar.writeTxnSync(() {
+        // Use sync for initial default creation if needed, or async elsewhere
+        _isar.appSettingsEntitys.putSync(newSettings);
+      });
+      return newSettings;
+    }
+    return settings;
+  }
 
-  // Get current browse mode
-  String get currentBrowseMode =>
-      _settingsBox.get('browseMode', defaultValue: defaultBrowseMode);
+  String get currentLanguage => _getSettings().language;
 
-  // Set language
+  String get currentBrowseMode => _getSettings().browseMode;
+
   Future<void> setLanguage(String languageCode) async {
-    await _settingsBox.put('language', languageCode);
+    await _isar.writeTxn(() async {
+      final settings =
+          await _isar.appSettingsEntitys.getBySettingsId('default');
+      final s = settings ?? AppSettingsEntity();
+      s.language = languageCode;
+      await _isar.appSettingsEntitys.put(s);
+    });
   }
 
-  // Set browse mode
   Future<void> setBrowseMode(String mode) async {
-    await _settingsBox.put('browseMode', mode);
+    await _isar.writeTxn(() async {
+      final settings =
+          await _isar.appSettingsEntitys.getBySettingsId('default');
+      final s = settings ?? AppSettingsEntity();
+      s.browseMode = mode;
+      await _isar.appSettingsEntitys.put(s);
+    });
   }
 
-  // Get JSON path for current language (uses combined library file)
   String _getJsonPath(String languageCode) {
     return 'assets/data/library_$languageCode.json';
   }
 
-  /// Fetch authors from local JSON file based on selected language and browse mode
-  /// This is completely offline - no internet required!
   Future<List<Author>> fetchAuthors(
       {String? languageCode, String? browseMode}) async {
     try {
@@ -46,14 +64,11 @@ class ApiService {
       print('Loading library from: $jsonPath');
       print('Browse mode: $mode');
 
-      // Load the JSON file from assets
       final String jsonString = await rootBundle.loadString(jsonPath);
 
-      // Parse the JSON
       final Map<String, dynamic> decodedData =
           jsonDecode(jsonString) as Map<String, dynamic>;
 
-      // Extract the appropriate array based on browse mode
       final List<dynamic> dataArray;
       if (mode == 'genre') {
         dataArray = decodedData['genres'] as List<dynamic>;
@@ -64,7 +79,6 @@ class ApiService {
       }
       print('========================');
 
-      // Convert to Author objects
       return dataArray.map((item) {
         if (item is Map) {
           return Author.fromJson(Map<String, dynamic>.from(item));
@@ -78,7 +92,6 @@ class ApiService {
     }
   }
 
-  /// Get list of available languages
   List<Map<String, String>> getAvailableLanguages() {
     return [
       {'code': 'bn', 'name': 'বাংলা'},
@@ -86,7 +99,6 @@ class ApiService {
     ];
   }
 
-  /// Get list of available browse modes
   List<Map<String, String>> getAvailableBrowseModes() {
     return [
       {'code': 'writer', 'name': 'Writer'},

@@ -1,83 +1,119 @@
-import 'package:hive_flutter/hive_flutter.dart';
+import 'package:isar/isar.dart';
 import '../models/models.dart';
+import '../models/isar_models.dart';
+import 'playlist_service.dart'; // To access the Isar instance
 
-class HistoryItem {
-  final Episode episode;
-  final Book book;
-  final Author author;
-  final double position;
-  final double duration;
-  final DateTime lastPlayed;
+class HistoryService {
+  // Use the Isar instance initialized in PlaylistService (or we can move init mostly to main)
+  // For now, let's assume global access or singleton
+  Isar get _isar => PlaylistService.isar;
 
-  HistoryItem({
-    required this.episode,
-    required this.book,
-    required this.author,
-    required this.position,
-    required this.duration,
-    required this.lastPlayed,
-  });
+  // --- Mappers ---
+  // (Duplicated from PlaylistService, could extract to a shared Mapper or mixin but this is fine for now)
 
-  bool get isFinished => duration > 0 && (position / duration) >= 0.95;
+  BookEntity _toBookEntity(Book book) {
+    return BookEntity()
+      ..originalId = book.id
+      ..title = book.title
+      ..cover = book.cover
+      ..author = book.author
+      ..authorImage = book.authorImage
+      ..episodes = book.episodes.map(_toEpisodeEntity).toList();
+  }
 
-  factory HistoryItem.fromJson(Map<String, dynamic> json) {
-    return HistoryItem(
-      episode: Episode.fromJson(Map<String, dynamic>.from(json['episode'])),
-      book: Book.fromJson(Map<String, dynamic>.from(json['book'])),
-      author: Author.fromJson(Map<String, dynamic>.from(json['author'])),
-      position: (json['position'] as num).toDouble(),
-      duration: (json['duration'] as num).toDouble(),
-      lastPlayed: DateTime.fromMillisecondsSinceEpoch(json['lastPlayed']),
+  EpisodeEntity _toEpisodeEntity(Episode episode) {
+    return EpisodeEntity()
+      ..id = episode.id
+      ..bookName = episode.bookName
+      ..audioUrl = episode.audioUrl
+      ..voiceOwner = episode.voiceOwner;
+  }
+
+  AuthorEntity _toAuthorEntity(Author author) {
+    return AuthorEntity()
+      ..id = author.id
+      ..name = author.name
+      ..image = author.image;
+  }
+
+  Book _fromBookEntity(BookEntity entity) {
+    return Book(
+      id: entity.originalId,
+      title: entity.title,
+      cover: entity.cover,
+      author: entity.author,
+      authorImage: entity.authorImage,
+      episodes: entity.episodes.map(_fromEpisodeEntity).toList(),
     );
   }
 
-  Map<String, dynamic> toJson() {
-    return {
-      'episode': episode.toJson(),
-      'book': book.toJson(),
-      'author': author.toJson(),
-      'position': position,
-      'duration': duration,
-      'lastPlayed': lastPlayed.millisecondsSinceEpoch,
-    };
+  Episode _fromEpisodeEntity(EpisodeEntity entity) {
+    return Episode(
+      id: entity.id,
+      bookName: entity.bookName,
+      audioUrl: entity.audioUrl,
+      voiceOwner: entity.voiceOwner,
+    );
   }
-}
 
-class HistoryService {
-  static const String boxName = 'playback_history';
+  Author _fromAuthorEntity(AuthorEntity entity) {
+    return Author(
+      id: entity.id,
+      name: entity.name,
+      image: entity.image,
+      books: [],
+    );
+  }
+
+  HistoryItem _fromHistoryItemEntity(HistoryItemEntity entity) {
+    return HistoryItem(
+      episode: _fromEpisodeEntity(entity.episode),
+      book: _fromBookEntity(entity.book),
+      author: _fromAuthorEntity(entity.author),
+      position: entity.position,
+      duration: entity.duration,
+      lastPlayed: entity.lastPlayed,
+    );
+  }
 
   static Future<void> init() async {
-    await Hive.openBox(boxName);
+    // No-op if PlaylistService.init() handles Isar opening.
+    // If we want HistoryService to be independent, we check if isar is open.
+    // But since we want one DB instance, let's rely on main calling a central init or PlaylistService.init
+    // For safety, we can ensure schemas are included in the open call in PlaylistService.
   }
-
-  Box get _box => Hive.box(boxName);
 
   Future<void> savePosition(Episode episode, Book book, Author author,
       double position, double duration) async {
-    final item = HistoryItem(
-      episode: episode,
-      book: book,
-      author: author,
-      position: position,
-      duration: duration,
-      lastPlayed: DateTime.now(),
-    );
+    await _isar.writeTxn(() async {
+      final existingItem =
+          await _isar.historyItemEntitys.getByEpisodeId(episode.id);
 
-    await _box.put(episode.id, item.toJson());
+      final item = existingItem ?? HistoryItemEntity();
+
+      item
+        ..episodeId = episode.id
+        ..episode = _toEpisodeEntity(episode)
+        ..book = _toBookEntity(book)
+        ..author = _toAuthorEntity(author)
+        ..position = position
+        ..duration = duration
+        ..lastPlayed = DateTime.now();
+
+      await _isar.historyItemEntitys.put(item);
+    });
   }
 
   List<HistoryItem> getHistory({bool uniqueByBook = true}) {
-    final items = _box.values
-        .map((e) => HistoryItem.fromJson(Map<String, dynamic>.from(e)))
-        .toList();
+    final items =
+        _isar.historyItemEntitys.where().sortByLastPlayedDesc().findAllSync();
 
-    // Sort by last played (newest first)
-    items.sort((a, b) => b.lastPlayed.compareTo(a.lastPlayed));
+    final historyItems = items.map(_fromHistoryItemEntity).toList();
 
-    if (!uniqueByBook) return items;
+    if (!uniqueByBook) return historyItems;
 
     final Map<String, HistoryItem> uniqueBooks = {};
-    for (var item in items) {
+    for (var item in historyItems) {
       if (!uniqueBooks.containsKey(item.book.id)) {
         uniqueBooks[item.book.id] = item;
       }
@@ -98,31 +134,28 @@ class HistoryService {
   }
 
   Future<void> remove(String episodeId) async {
-    await _box.delete(episodeId);
+    await _isar.writeTxn(() async {
+      await _isar.historyItemEntitys.deleteByEpisodeId(episodeId);
+    });
   }
 
   Future<void> removeBookHistory(String bookId) async {
-    final Map<dynamic, dynamic> history = _box.toMap();
-    final List<dynamic> keysToRemove = [];
-
-    history.forEach((key, value) {
-      try {
-        final item = HistoryItem.fromJson(Map<String, dynamic>.from(value));
-        if (item.book.id == bookId) {
-          keysToRemove.add(key);
-        }
-      } catch (e) {
-        // Handle potential parsing errors for old/corrupt data
-        print('Error parsing history item for removal: $e');
-      }
+    await _isar.writeTxn(() async {
+      // Find all history items for this book
+      // Isar filter by embedded object property is tricky if not indexed,
+      // but we can iterate since history isn't huge, or filter in Isar.
+      // Filtering embedded objects via query:
+      // We can use filter()
+      await _isar.historyItemEntitys
+          .filter()
+          .book((q) => q.originalIdEqualTo(bookId))
+          .deleteAll();
     });
-
-    for (var key in keysToRemove) {
-      await _box.delete(key);
-    }
   }
 
   Future<void> clear() async {
-    await _box.clear();
+    await _isar.writeTxn(() async {
+      await _isar.historyItemEntitys.clear();
+    });
   }
 }
