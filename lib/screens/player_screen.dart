@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/audio_player_provider.dart';
 import '../models/models.dart';
+import '../widgets/save_to_playlist_sheet.dart';
 
 class PlayerScreen extends ConsumerWidget {
   const PlayerScreen({super.key});
@@ -106,7 +107,15 @@ class PlayerScreen extends ConsumerWidget {
                   const SizedBox(height: 20),
 
                   // Download button
-                  _buildDownloadButton(context, ref, episode),
+                  // Action buttons
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _buildDownloadButton(context, ref, episode),
+                      const SizedBox(width: 16),
+                      _buildSaveButton(context, book, author),
+                    ],
+                  ),
 
                   const SizedBox(height: 10),
                 ],
@@ -355,6 +364,34 @@ class PlayerScreen extends ConsumerWidget {
               );
             }
           },
+        );
+      },
+    );
+  }
+
+  Widget _buildSaveButton(BuildContext context, Book book, Author author) {
+    return ElevatedButton.icon(
+      icon: const Icon(Icons.playlist_add),
+      label: const Text('Save'),
+      onPressed: () {
+        showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          builder: (context) => DraggableScrollableSheet(
+            expand: false,
+            initialChildSize: 0.6,
+            minChildSize: 0.4,
+            maxChildSize: 0.9,
+            builder: (context, scrollController) {
+              return SingleChildScrollView(
+                controller: scrollController,
+                child: SaveToPlaylistSheet(book: book, author: author),
+              );
+            },
+          ),
         );
       },
     );

@@ -6,6 +6,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:bookify_audio/package/audio_player.dart';
 import 'package:bookify_audio/providers/audio_player_provider.dart';
 import 'package:bookify_audio/services/history_service.dart';
+import 'package:bookify_audio/services/playlist_service.dart';
 import 'screens/home_screen.dart';
 import 'screens/book_screen.dart';
 import 'screens/player_screen.dart';
@@ -23,6 +24,7 @@ void main() async {
   await Hive.openBox('settings');
   await Hive.openBox('player_data');
   await HistoryService.init();
+  await PlaylistService.init();
 
   // Lock to portrait mode for better audio-book experience
   await SystemChrome.setPreferredOrientations([
