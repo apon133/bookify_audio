@@ -13,6 +13,7 @@ class PlaylistService {
         PlaylistEntitySchema,
         HistoryItemEntitySchema,
         AppSettingsEntitySchema,
+        ReactionEntitySchema,
       ],
       directory: dir.path,
     );

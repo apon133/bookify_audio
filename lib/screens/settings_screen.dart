@@ -4,7 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/audio_player_provider.dart';
 import '../providers/history_provider.dart';
 import '../providers/playlist_provider.dart';
+import '../providers/reaction_provider.dart';
 import '../models/models.dart';
+import '../models/isar_models.dart';
 import 'playlist_detail_screen.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -391,10 +393,156 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
+  Widget _buildLikedList(List<ReactionEntity> items) {
+    if (items.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Liked Audiobooks',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: -0.5,
+                ),
+              ),
+              if (items.length > 5)
+                Text(
+                  'See All',
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+            ],
+          ),
+        ),
+        SizedBox(
+          height: 180, // Slightly smaller than history
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            itemCount: items.length,
+            itemBuilder: (context, index) {
+              final item = items[index];
+              // Convert embedded entities back to domain models to play
+              // We need helper methods or do it inline. Inline is messy.
+              // Let's manually construct simpler objects just enough to play?
+              // Or better, let's fix `ReactionService` to expose mappers or duplicate them here?
+              // Actually, I can just construct `Book` and `Episode` from entity data since it is complete.
+
+              return GestureDetector(
+                onTap: () {
+                  // Construct Objects
+                  final episode = Episode(
+                    id: item.episode.id,
+                    bookName: item.episode.bookName,
+                    audioUrl: item.episode.audioUrl,
+                    voiceOwner: item.episode.voiceOwner,
+                  );
+                  final book = Book(
+                    id: item.book.originalId,
+                    title: item.book.title,
+                    cover: item.book.cover,
+                    episodes: [], // Empty for now, playEpisode might fetch or need them? `playEpisode` usually needs list to play next.
+                    // If we only have one episode info here, next/prev might fail.
+                    // Ideally we fetch the full book.
+                    // For now, let's play just this episode.
+                    author: item.book.author,
+                    authorImage: item.book.authorImage,
+                  );
+                  final author = Author(
+                    id: item.author.id,
+                    name: item.author.name,
+                    image: item.author.image,
+                    books: [],
+                  );
+
+                  ref.read(audioPlayerProvider).playEpisode(
+                        episode,
+                        book,
+                        author,
+                      );
+                },
+                child: Container(
+                  width: 140,
+                  margin: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        height: 140,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.1),
+                              blurRadius: 8,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              CachedNetworkImage(
+                                imageUrl: item.book.cover,
+                                fit: BoxFit.cover,
+                                errorWidget: (_, __, ___) =>
+                                    Container(color: Colors.grey),
+                              ),
+                              const Center(
+                                child: Icon(Icons.favorite,
+                                    color: Colors.white, size: 32),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        item.book.title,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Text(
+                        item.episode.bookName, // This is episode name
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[600],
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final historyState = ref.watch(historyProvider);
     final playlists = ref.watch(playlistProvider);
+    final likedAudioAsync = ref.watch(likedAudioProvider);
+
     // Show all unfinished episodes, not just one per book
     final continueWatching =
         historyState.where((item) => !item.isFinished).toList();
@@ -410,6 +558,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           children: [
             _buildHistoryList(continueWatching, 'Continue Watching',
                 isContinue: true),
+            likedAudioAsync.when(
+              data: (liked) => _buildLikedList(liked),
+              loading: () => const SizedBox(
+                  height: 100,
+                  child: Center(child: CircularProgressIndicator())),
+              error: (_, __) => const SizedBox.shrink(),
+            ),
             _buildPlaylistsList(playlists),
             const SizedBox(height: 120),
           ],

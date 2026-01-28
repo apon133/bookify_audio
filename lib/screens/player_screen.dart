@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/audio_player_provider.dart';
+import '../providers/reaction_provider.dart';
 import '../models/models.dart';
 import '../widgets/save_to_playlist_sheet.dart';
 
@@ -108,12 +109,16 @@ class PlayerScreen extends ConsumerWidget {
 
                   // Download button
                   // Action buttons
+                  // Action buttons
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       _buildDownloadButton(context, ref, episode),
                       const SizedBox(width: 16),
                       _buildSaveButton(context, book, author),
+                      const SizedBox(width: 16),
+                      _buildLikeDislikeButtons(
+                          context, ref, episode, book, author),
                     ],
                   ),
 
@@ -394,6 +399,44 @@ class PlayerScreen extends ConsumerWidget {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildLikeDislikeButtons(BuildContext context, WidgetRef ref,
+      Episode episode, Book book, Author author) {
+    final reactions = ref.watch(reactionProvider);
+    final reactionNotifier = ref.read(reactionProvider.notifier);
+
+    // Check initial state if not loaded
+    if (!reactions.containsKey(episode.id)) {
+      Future.microtask(() => reactionNotifier.checkReaction(episode.id));
+    }
+
+    final currentReaction = reactions[episode.id];
+    // Need ReactionType enum access.
+    // Since it is in isar_models which is imported via models.dart export NO it is not exported there, I might need to import isar_models or just rely on dynamic/string check if lazy, but better to import correctly.
+    // Assuming ReactionType.like/dislike is available if I import isar_models.dart
+
+    final isLiked = currentReaction.toString() == 'ReactionType.like';
+    final isDisliked = currentReaction.toString() == 'ReactionType.dislike';
+
+    return Row(
+      children: [
+        IconButton(
+          icon: Icon(isLiked ? Icons.thumb_up : Icons.thumb_up_outlined,
+              color: isLiked ? Theme.of(context).colorScheme.primary : null),
+          onPressed: () {
+            reactionNotifier.toggleLike(episode, book, author);
+          },
+        ),
+        IconButton(
+          icon: Icon(isDisliked ? Icons.thumb_down : Icons.thumb_down_outlined,
+              color: isDisliked ? Colors.red : null),
+          onPressed: () {
+            reactionNotifier.toggleDislike(episode, book, author);
+          },
+        ),
+      ],
     );
   }
 

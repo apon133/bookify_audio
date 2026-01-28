@@ -77,3 +77,22 @@ class AuthorEntity {
   late String image;
   // We don't store the full list of books for the author in the playlist item
 }
+
+enum ReactionType { like, dislike }
+
+@collection
+class ReactionEntity {
+  Id id = Isar.autoIncrement;
+
+  @Index(unique: true, replace: true)
+  late String episodeId;
+
+  late BookEntity book;
+  late AuthorEntity author;
+  late EpisodeEntity episode;
+
+  @enumerated
+  late ReactionType type;
+
+  late DateTime createdAt;
+}
