@@ -149,7 +149,7 @@ class AudioPlayerService {
   }
 
   Future<void> setPlaybackSpeed(double speed) async {
-    // Note: Web player currently doesn't expose playback speed, but could be added via JS
+    await _controller.setPlaybackRate(speed);
     _updateState(playbackSpeed: speed);
   }
 

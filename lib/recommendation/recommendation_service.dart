@@ -17,7 +17,8 @@ class RecommendationService {
   final ReactionService _reactionService = ReactionService();
   final PlaylistService _playlistService = PlaylistService();
 
-  Future<List<RecommendedBook>> getRecommendations() async {
+  Future<List<RecommendedBook>> getRecommendations(
+      {double currentPlaybackSpeed = 1.0}) async {
     // 1. Fetch user history
     final history = _historyService.getHistory(uniqueByBook: false);
 
@@ -110,8 +111,18 @@ class RecommendationService {
     // Use a seed that changes every hour to keep suggestions fresh but stable
     // This prevents the "jumping" effect every few seconds
     final now = DateTime.now();
+    // Include speed in seed? No, better use it for scoring.
     final seed = now.year * 10000 + now.month * 100 + now.day + now.hour;
     final random = Random(seed);
+
+    // Speed Factor Integration:
+    // If playback speed is high (> 1.2), user consumes content faster.
+    // We boost highly engaging items more aggressively.
+    double speedMultiplier = 1.0;
+    if (currentPlaybackSpeed > 1.2) {
+      speedMultiplier =
+          1.0 + (currentPlaybackSpeed - 1.0) * 0.2; // e.g. 1.5x -> 1.1 bonus
+    }
 
     for (var book in allBooks) {
       final authorOfBook = bookToAuthor[book.id]!;
@@ -121,7 +132,10 @@ class RecommendationService {
       score += authorScores[ag.author] ?? 0;
       score += genreScores[ag.genre] ?? 0;
 
+      // Apply speed factor only if positive score
       if (score > 0) {
+        score = score * speedMultiplier;
+
         // Random boost is now stable for the current hour
         score += random.nextDouble() * 15.0;
         scoredItems.add(_ScoredItem(book, authorOfBook, score));
