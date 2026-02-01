@@ -117,7 +117,6 @@ class BookScreen extends ConsumerWidget {
                           child: Container(
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              color: Colors.grey[100],
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Row(

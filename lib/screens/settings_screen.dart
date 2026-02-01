@@ -8,6 +8,8 @@ import '../providers/reaction_provider.dart';
 import '../models/models.dart';
 import '../models/isar_models.dart';
 import 'playlist_detail_screen.dart';
+import '../services/api_service.dart';
+import '../providers/authors_provider.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -17,6 +19,91 @@ class SettingsScreen extends ConsumerStatefulWidget {
 }
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
+  final ApiService _apiService = ApiService();
+  String _selectedLanguage = '';
+  String _selectedBrowseMode = '';
+
+  @override
+  void initState() {
+    super.initState();
+    // Load current settings
+    _selectedLanguage = _apiService.currentLanguage;
+    _selectedBrowseMode = _apiService.currentBrowseMode;
+  }
+
+  Future<void> _changeLanguage(String languageCode) async {
+    if (languageCode == _selectedLanguage) return;
+    setState(() => _selectedLanguage = languageCode);
+    await _apiService.setLanguage(languageCode);
+    ref.read(authorsProvider).fetchAuthors(languageCode: languageCode);
+    // Force rebuild of home screen might be needed if it doesn't watch specific parts,
+    // but watching authorsProvider should handle it.
+  }
+
+  Future<void> _changeBrowseMode(String browseMode) async {
+    if (browseMode == _selectedBrowseMode) return;
+    setState(() => _selectedBrowseMode = browseMode);
+    await _apiService.setBrowseMode(browseMode);
+    ref.read(authorsProvider).fetchAuthors(browseMode: browseMode);
+  }
+
+  Widget _buildAppSettings() {
+    final availableLanguages = _apiService.getAvailableLanguages();
+    final availableBrowseModes = _apiService.getAvailableBrowseModes();
+
+    return Column(
+      children: [
+        ListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 20),
+          title: const Text('Language'),
+          subtitle: Text(
+            availableLanguages.firstWhere((l) => l['code'] == _selectedLanguage,
+                orElse: () => {'name': _selectedLanguage})['name']!,
+            style: TextStyle(color: Colors.grey[600]),
+          ),
+          trailing: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              value: _selectedLanguage.isEmpty ? null : _selectedLanguage,
+              items: availableLanguages.map((lang) {
+                return DropdownMenuItem<String>(
+                  value: lang['code'],
+                  child: Text(lang['name'] ?? ''),
+                );
+              }).toList(),
+              onChanged: (String? newValue) {
+                if (newValue != null) _changeLanguage(newValue);
+              },
+            ),
+          ),
+        ),
+        ListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 20),
+          title: const Text('Browse Mode'),
+          subtitle: Text(
+            availableBrowseModes.firstWhere(
+                (m) => m['code'] == _selectedBrowseMode,
+                orElse: () => {'name': _selectedBrowseMode})['name']!,
+            style: TextStyle(color: Colors.grey[600]),
+          ),
+          trailing: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              value: _selectedBrowseMode.isEmpty ? null : _selectedBrowseMode,
+              items: availableBrowseModes.map((mode) {
+                return DropdownMenuItem<String>(
+                  value: mode['code'],
+                  child: Text(mode['name'] ?? ''),
+                );
+              }).toList(),
+              onChanged: (String? newValue) {
+                if (newValue != null) _changeBrowseMode(newValue);
+              },
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildHistoryList(List<HistoryItem> items, String title,
       {bool isContinue = false}) {
     if (items.isEmpty) return const SizedBox.shrink();
@@ -556,6 +643,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         physics: const BouncingScrollPhysics(),
         child: Column(
           children: [
+            _buildAppSettings(),
             _buildHistoryList(continueWatching, 'Continue Watching',
                 isContinue: true),
             likedAudioAsync.when(

@@ -68,83 +68,70 @@ class _SearchScreenState extends ConsumerState<SearchScreen>
         child: Column(
           children: [
             // Custom Search Bar
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-              decoration: BoxDecoration(
-                color: theme.appBarTheme.backgroundColor ?? theme.primaryColor,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  // Back button
-                  IconButton(
-                    icon: const Icon(Icons.arrow_back),
-                    onPressed: () => Navigator.pop(context),
-                    tooltip: 'Back',
-                  ),
-
-                  // Search field
-                  Expanded(
-                    child: Container(
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: theme.brightness == Brightness.dark
-                            ? Colors.white.withOpacity(0.1)
-                            : Colors.black.withOpacity(0.05),
-                        borderRadius: BorderRadius.circular(24),
+            Row(
+              children: [
+                // Back button
+                IconButton(
+                  icon: const Icon(Icons.arrow_back),
+                  onPressed: () => Navigator.pop(context),
+                  tooltip: 'Back',
+                ),
+            
+                // Search field
+                Expanded(
+                  child: Container(
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: theme.brightness == Brightness.dark
+                          ? Colors.white.withOpacity(0.1)
+                          : Colors.black.withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(24),
+                    ),
+                    child: TextField(
+                      controller: _searchController,
+                      focusNode: _focusNode,
+                      onChanged: _performSearch,
+                      onSubmitted: (query) {
+                        if (query.trim().isNotEmpty) {
+                          ref.read(searchProvider).addRecentSearch(query);
+                        }
+                      },
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: theme.textTheme.bodyLarge?.color,
                       ),
-                      child: TextField(
-                        controller: _searchController,
-                        focusNode: _focusNode,
-                        onChanged: _performSearch,
-                        onSubmitted: (query) {
-                          if (query.trim().isNotEmpty) {
-                            ref.read(searchProvider).addRecentSearch(query);
-                          }
-                        },
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: theme.textTheme.bodyLarge?.color,
+                      decoration: InputDecoration(
+                        hintText: 'Search authors, books, episodes...',
+                        hintStyle: TextStyle(
+                          color: theme.textTheme.bodyLarge?.color
+                              ?.withOpacity(0.5),
                         ),
-                        decoration: InputDecoration(
-                          hintText: 'Search authors, books, episodes...',
-                          hintStyle: TextStyle(
-                            color: theme.textTheme.bodyLarge?.color
-                                ?.withOpacity(0.5),
-                          ),
-                          prefixIcon: Icon(
-                            Icons.search,
-                            color: theme.iconTheme.color?.withOpacity(0.7),
-                          ),
-                          suffixIcon: _searchController.text.isNotEmpty
-                              ? IconButton(
-                                  icon: Icon(
-                                    Icons.clear,
-                                    color:
-                                        theme.iconTheme.color?.withOpacity(0.7),
-                                  ),
-                                  onPressed: _clearSearch,
-                                )
-                              : null,
-                          border: InputBorder.none,
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
-                          ),
+                        prefixIcon: Icon(
+                          Icons.search,
+                          color: theme.iconTheme.color?.withOpacity(0.7),
+                        ),
+                        suffixIcon: _searchController.text.isNotEmpty
+                            ? IconButton(
+                                icon: Icon(
+                                  Icons.clear,
+                                  color:
+                                      theme.iconTheme.color?.withOpacity(0.7),
+                                ),
+                                onPressed: _clearSearch,
+                              )
+                            : null,
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
                         ),
                       ),
                     ),
                   ),
-
-                  const SizedBox(width: 8),
-                ],
-              ),
+                ),
+            
+                const SizedBox(width: 8),
+              ],
             ),
 
             // Search Results or Recent Searches

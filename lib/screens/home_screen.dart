@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/authors_provider.dart';
 import '../providers/recommendation_provider.dart';
 import '../recommendation/recommendation_service.dart';
-import '../services/api_service.dart';
 import 'author_screen.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
@@ -15,41 +14,17 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
-  final ApiService _apiService = ApiService();
-  String _selectedLanguage = '';
-  String _selectedBrowseMode = '';
-
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      setState(() {
-        _selectedLanguage = _apiService.currentLanguage;
-        _selectedBrowseMode = _apiService.currentBrowseMode;
-      });
       ref.read(authorsProvider).fetchAuthors();
     });
-  }
-
-  Future<void> _changeLanguage(String languageCode) async {
-    if (languageCode == _selectedLanguage) return;
-    setState(() => _selectedLanguage = languageCode);
-    await _apiService.setLanguage(languageCode);
-    ref.read(authorsProvider).fetchAuthors(languageCode: languageCode);
-  }
-
-  Future<void> _changeBrowseMode(String browseMode) async {
-    if (browseMode == _selectedBrowseMode) return;
-    setState(() => _selectedBrowseMode = browseMode);
-    await _apiService.setBrowseMode(browseMode);
-    ref.read(authorsProvider).fetchAuthors(browseMode: browseMode);
   }
 
   @override
   Widget build(BuildContext context) {
     final authorsNotifier = ref.watch(authorsProvider);
-    final availableLanguages = _apiService.getAvailableLanguages();
-    final availableBrowseModes = _apiService.getAvailableBrowseModes();
 
     return Scaffold(
       appBar: AppBar(
@@ -60,41 +35,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             icon: const Icon(Icons.search),
             tooltip: 'Search',
             onPressed: () => Navigator.pushNamed(context, '/search'),
-          ),
-          Padding(
-            padding: const EdgeInsets.only(right: 8.0),
-            child: DropdownButton<String>(
-              value: _selectedBrowseMode.isEmpty ? null : _selectedBrowseMode,
-              underline: const SizedBox(),
-              dropdownColor: Theme.of(context).colorScheme.surface,
-              icon: const Icon(Icons.filter_list),
-              items: availableBrowseModes.map((mode) {
-                return DropdownMenuItem<String>(
-                  value: mode['code'],
-                  child: Text(mode['name'] ?? ''),
-                );
-              }).toList(),
-              onChanged: (String? newValue) {
-                if (newValue != null) _changeBrowseMode(newValue);
-              },
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.only(right: 16.0),
-            child: DropdownButton<String>(
-              value: _selectedLanguage.isEmpty ? null : _selectedLanguage,
-              underline: const SizedBox(),
-              dropdownColor: Theme.of(context).colorScheme.surface,
-              items: availableLanguages.map((lang) {
-                return DropdownMenuItem<String>(
-                  value: lang['code'],
-                  child: Text(lang['name'] ?? ''),
-                );
-              }).toList(),
-              onChanged: (String? newValue) {
-                if (newValue != null) _changeLanguage(newValue);
-              },
-            ),
           ),
         ],
       ),
@@ -247,7 +187,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 if (book.author != null)
                                   Padding(
                                     padding: const EdgeInsets.only(top: 2),
-                                    child: Text(book.author!,
+                                    child: Text(
+                                        book.author!.split(':').first.trim(),
                                         style: TextStyle(
                                             fontSize: 11,
                                             color: Colors.grey[600]),
@@ -298,10 +239,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               return _buildBookItem(context, recommended);
             },
           ),
-        ),
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16),
-          child: Divider(),
         ),
       ],
     );

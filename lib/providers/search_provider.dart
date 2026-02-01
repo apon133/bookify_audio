@@ -105,7 +105,8 @@ class SearchNotifier extends ChangeNotifier {
           searchResults.add(SearchResult(
             id: book.id,
             title: book.title,
-            subtitle: 'by ${author.name} • ${book.episodes.length} episodes',
+            subtitle:
+                'by ${book.author != null ? book.author!.split(':').first.trim() : author.name} • ${book.episodes.length} episodes',
             imageUrl: book.cover,
             type: SearchResultType.book,
             data: book,
