@@ -1,7 +1,7 @@
 name: bookify_audio
 description: "Bookify Audio"
 
-version: 1.0.1+2
+version: 1.0.5+6
 
 environment:
   sdk: ^3.6.0
@@ -11,7 +11,6 @@ dependencies:
     sdk: flutter
 
   cupertino_icons: ^1.0.8
-  youtube_explode_dart: ^2.3.6
   flutter_riverpod: ^2.6.1
   google_fonts: ^6.2.1
   cached_network_image: ^3.4.1

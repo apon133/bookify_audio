@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
 import '../models/models.dart';
-import '../services/download_service.dart';
 import '../services/history_service.dart';
 import '../package/audio_player.dart';
 
@@ -10,7 +9,6 @@ class AudioPlayerService {
       BookifyAudioPlayerController();
 
   // Download service
-  final DownloadService _downloadService = DownloadService();
 
   // Current state
   AudioPlayerState _state = AudioPlayerState();
@@ -62,10 +60,6 @@ class AudioPlayerService {
     Author? currentAuthor,
     String? audioUrl,
     double? playbackSpeed,
-    bool? isDownloaded,
-    String? localFilePath,
-    bool? isDownloading,
-    double? downloadProgress,
   }) {
     _state = _state.copyWith(
       isPlaying: isPlaying,
@@ -77,29 +71,12 @@ class AudioPlayerService {
       currentAuthor: currentAuthor,
       audioUrl: audioUrl,
       playbackSpeed: playbackSpeed,
-      isDownloaded: isDownloaded,
-      localFilePath: localFilePath,
-      isDownloading: isDownloading,
-      downloadProgress: downloadProgress,
     );
 
     _stateController.value = _state;
   }
 
   // Update download status
-  void updateDownloadStatus(
-    bool isDownloading,
-    double progress, {
-    bool? isDownloaded,
-    String? localFilePath,
-  }) {
-    _updateState(
-      isDownloading: isDownloading,
-      downloadProgress: progress,
-      isDownloaded: isDownloaded,
-      localFilePath: localFilePath,
-    );
-  }
 
   Future<void> playEpisode(Episode episode, Book book, Author author,
       {double? savedPosition}) async {
@@ -138,24 +115,7 @@ class AudioPlayerService {
         currentEpisode: episode,
         currentBook: book,
         currentAuthor: author,
-        isDownloaded: false,
-        localFilePath: null,
-        isDownloading: false,
-        downloadProgress: 0.0,
       );
-
-      // Check if the episode is downloaded
-      final isDownloaded = await _downloadService.isEpisodeDownloaded(episode);
-      String? localFilePath;
-
-      if (isDownloaded) {
-        // Use local file if downloaded
-        localFilePath = await _downloadService.getLocalFilePath(episode);
-        _updateState(
-          isDownloaded: true,
-          localFilePath: localFilePath,
-        );
-      }
 
       // Always load the URL. Pass the startPosition to avoid starting at 0.
       await _controller.load(episode.audioUrl, startPosition: positionToSeek);

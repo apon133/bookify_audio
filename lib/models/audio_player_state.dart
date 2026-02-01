@@ -12,10 +12,6 @@ class AudioPlayerState {
   final Author? currentAuthor;
   final String? audioUrl;
   final double playbackSpeed;
-  final bool isDownloaded;
-  final String? localFilePath;
-  final bool isDownloading;
-  final double downloadProgress;
 
   AudioPlayerState({
     this.isPlaying = false,
@@ -27,10 +23,6 @@ class AudioPlayerState {
     this.currentAuthor,
     this.audioUrl,
     this.playbackSpeed = 1.0,
-    this.isDownloaded = false,
-    this.localFilePath,
-    this.isDownloading = false,
-    this.downloadProgress = 0.0,
   });
 
   AudioPlayerState copyWith({
@@ -43,10 +35,6 @@ class AudioPlayerState {
     Author? currentAuthor,
     String? audioUrl,
     double? playbackSpeed,
-    bool? isDownloaded,
-    String? localFilePath,
-    bool? isDownloading,
-    double? downloadProgress,
   }) {
     return AudioPlayerState(
       isPlaying: isPlaying ?? this.isPlaying,
@@ -58,10 +46,6 @@ class AudioPlayerState {
       currentAuthor: currentAuthor ?? this.currentAuthor,
       audioUrl: audioUrl ?? this.audioUrl,
       playbackSpeed: playbackSpeed ?? this.playbackSpeed,
-      isDownloaded: isDownloaded ?? this.isDownloaded,
-      localFilePath: localFilePath ?? this.localFilePath,
-      isDownloading: isDownloading ?? this.isDownloading,
-      downloadProgress: downloadProgress ?? this.downloadProgress,
     );
   }
-} 
+}

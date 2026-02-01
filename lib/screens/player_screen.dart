@@ -113,8 +113,7 @@ class PlayerScreen extends ConsumerWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      _buildDownloadButton(context, ref, episode),
-                      const SizedBox(width: 16),
+                      // Download button removed
                       _buildSaveButton(context, book, author),
                       const SizedBox(width: 16),
                       _buildLikeDislikeButtons(
@@ -263,114 +262,6 @@ class PlayerScreen extends ConsumerWidget {
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildDownloadButton(
-    BuildContext context,
-    WidgetRef ref,
-    Episode episode,
-  ) {
-    final audioPlayerNotifier = ref.watch(audioPlayerProvider);
-
-    // Check if the episode is already downloaded
-    if (audioPlayerNotifier.isDownloaded &&
-        audioPlayerNotifier.currentEpisode?.id == episode.id) {
-      return ElevatedButton.icon(
-        icon: const Icon(Icons.delete),
-        label: const Text('Delete Download'),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.red,
-          foregroundColor: Colors.white,
-        ),
-        onPressed: () async {
-          // Capture the ScaffoldMessenger before async operation
-          final messenger = ScaffoldMessenger.of(context);
-          await audioPlayerNotifier.deleteDownloadedEpisode(episode);
-          messenger.showSnackBar(
-            const SnackBar(content: Text('Download deleted')),
-          );
-        },
-      );
-    }
-
-    // Show download progress if downloading
-    if (audioPlayerNotifier.isDownloading &&
-        audioPlayerNotifier.currentEpisode?.id == episode.id) {
-      return Column(
-        children: [
-          LinearProgressIndicator(
-            value: audioPlayerNotifier.downloadProgress,
-            backgroundColor: Colors.grey[300],
-            valueColor: AlwaysStoppedAnimation<Color>(
-              Theme.of(context).colorScheme.primary,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Downloading ${(audioPlayerNotifier.downloadProgress * 100).toStringAsFixed(1)}%',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey[600],
-            ),
-          ),
-          const SizedBox(height: 8),
-          TextButton.icon(
-            icon: const Icon(Icons.cancel),
-            label: const Text('Cancel'),
-            onPressed: () {
-              // Capture the ScaffoldMessenger before operation
-              final messenger = ScaffoldMessenger.of(context);
-              audioPlayerNotifier.cancelDownload();
-              messenger.showSnackBar(
-                const SnackBar(content: Text('Download canceled')),
-              );
-            },
-          ),
-        ],
-      );
-    }
-
-    // Show download button if not downloaded and not downloading
-    return FutureBuilder<bool>(
-      future: audioPlayerNotifier.isEpisodeDownloaded(episode),
-      builder: (context, snapshot) {
-        final isDownloaded = snapshot.data ?? false;
-
-        if (isDownloaded) {
-          return ElevatedButton.icon(
-            icon: const Icon(Icons.delete),
-            label: const Text('Delete Download'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
-            ),
-            onPressed: () async {
-              // Capture the ScaffoldMessenger before async operation
-              final messenger = ScaffoldMessenger.of(context);
-              await audioPlayerNotifier.deleteDownloadedEpisode(episode);
-              messenger.showSnackBar(
-                const SnackBar(content: Text('Download deleted')),
-              );
-            },
-          );
-        }
-
-        return ElevatedButton.icon(
-          icon: const Icon(Icons.download),
-          label: const Text('Download for Offline'),
-          onPressed: () async {
-            // Capture the ScaffoldMessenger before async operation
-            final messenger = ScaffoldMessenger.of(context);
-            await audioPlayerNotifier.downloadEpisode(episode);
-            if (audioPlayerNotifier.isDownloaded) {
-              messenger.showSnackBar(
-                const SnackBar(content: Text('Download complete')),
-              );
-            }
-          },
-        );
-      },
     );
   }
 
