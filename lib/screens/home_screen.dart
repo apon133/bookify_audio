@@ -2,6 +2,8 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/authors_provider.dart';
+import '../providers/recommendation_provider.dart';
+import '../recommendation/recommendation_service.dart';
 import '../services/api_service.dart';
 import 'author_screen.dart';
 
@@ -123,11 +125,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             return const Center(child: Text('No authors found'));
           }
 
+          final recommendationsNotifier = ref.watch(recommendationProvider);
+          final recommendations = recommendationsNotifier.recommendations;
+
           return ListView.builder(
             padding: const EdgeInsets.only(bottom: 100),
-            itemCount: authorsNotifier.authors.length,
+            itemCount: authorsNotifier.authors.length +
+                (recommendations.isNotEmpty ? 1 : 0),
             itemBuilder: (context, index) {
-              final author = authorsNotifier.authors[index];
+              if (recommendations.isNotEmpty && index == 0) {
+                return _buildRecommendationSection(context, recommendations);
+              }
+
+              final authorIndex =
+                  recommendations.isNotEmpty ? index - 1 : index;
+              final author = authorsNotifier.authors[authorIndex];
 
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -255,6 +267,112 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             },
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildRecommendationSection(
+      BuildContext context, List<RecommendedBook> recommendations) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.fromLTRB(16, 24, 16, 8),
+          child: Text(
+            'Recommended For You',
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: Colors.orangeAccent,
+            ),
+          ),
+        ),
+        SizedBox(
+          height: 220,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            itemCount: recommendations.length,
+            itemBuilder: (context, bookIndex) {
+              final recommended = recommendations[bookIndex];
+              return _buildBookItem(context, recommended);
+            },
+          ),
+        ),
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16),
+          child: Divider(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBookItem(BuildContext context, RecommendedBook recommended) {
+    final book = recommended.book;
+    final author = recommended.author;
+
+    return GestureDetector(
+      onTap: () {
+        Navigator.pushNamed(context, '/book',
+            arguments: {'book': book, 'author': author});
+      },
+      child: Container(
+        width: 130,
+        margin: const EdgeInsets.symmetric(horizontal: 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Hero(
+              tag: 'book-recommendation-${book.id}',
+              child: Container(
+                height: 170,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.2),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: book.cover.isNotEmpty
+                      ? CachedNetworkImage(
+                          fit: BoxFit.cover,
+                          imageUrl: book.cover,
+                          errorWidget: (context, error, stackTrace) =>
+                              Container(
+                            color: Colors.grey[800],
+                            child: const Icon(Icons.book,
+                                size: 40, color: Colors.grey),
+                          ),
+                        )
+                      : Container(
+                          color: Colors.grey[800],
+                          child: const Icon(Icons.book,
+                              size: 40, color: Colors.grey),
+                        ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              book.title,
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            if (book.author != null)
+              Text(
+                book.author!.split(':').first,
+                style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+          ],
+        ),
       ),
     );
   }

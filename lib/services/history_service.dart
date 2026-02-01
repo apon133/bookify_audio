@@ -36,18 +36,18 @@ class HistoryService {
       ..image = author.image;
   }
 
-  Book _fromBookEntity(BookEntity entity) {
+  Book fromBookEntity(BookEntity entity) {
     return Book(
       id: entity.originalId,
       title: entity.title,
       cover: entity.cover,
       author: entity.author,
       authorImage: entity.authorImage,
-      episodes: entity.episodes.map(_fromEpisodeEntity).toList(),
+      episodes: entity.episodes.map(fromEpisodeEntity).toList(),
     );
   }
 
-  Episode _fromEpisodeEntity(EpisodeEntity entity) {
+  Episode fromEpisodeEntity(EpisodeEntity entity) {
     return Episode(
       id: entity.id,
       bookName: entity.bookName,
@@ -56,7 +56,7 @@ class HistoryService {
     );
   }
 
-  Author _fromAuthorEntity(AuthorEntity entity) {
+  Author fromAuthorEntity(AuthorEntity entity) {
     return Author(
       id: entity.id,
       name: entity.name,
@@ -65,11 +65,11 @@ class HistoryService {
     );
   }
 
-  HistoryItem _fromHistoryItemEntity(HistoryItemEntity entity) {
+  HistoryItem fromHistoryItemEntity(HistoryItemEntity entity) {
     return HistoryItem(
-      episode: _fromEpisodeEntity(entity.episode),
-      book: _fromBookEntity(entity.book),
-      author: _fromAuthorEntity(entity.author),
+      episode: fromEpisodeEntity(entity.episode),
+      book: fromBookEntity(entity.book),
+      author: fromAuthorEntity(entity.author),
       position: entity.position,
       duration: entity.duration,
       lastPlayed: entity.lastPlayed,
@@ -108,7 +108,7 @@ class HistoryService {
     final items =
         _isar.historyItemEntitys.where().sortByLastPlayedDesc().findAllSync();
 
-    final historyItems = items.map(_fromHistoryItemEntity).toList();
+    final historyItems = items.map(fromHistoryItemEntity).toList();
 
     if (!uniqueByBook) return historyItems;
 
