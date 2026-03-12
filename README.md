@@ -14,32 +14,46 @@ There are many features and improvements still left to implement. You can contri
 
 1. **Improving app functionality**
 2. **Suggesting new features** or providing feedback
-3. **find bug and solve**
+3. **Finding and solving bugs**
+
+---
+
+## 🛠️ Tech Stack
+
+- **Framework:** [Flutter](https://flutter.dev) (for high-performance cross-platform development)
+- **State Management:** [Riverpod](https://riverpod.dev)
+- **Database:** [Isar](https://isar.dev) (fast, NoSQL local database)
+- **Audio Engine:** [youtube_player_flutter](https://pub.dev/packages/youtube_player_flutter) & [youtube_explode_dart](https://pub.dev/packages/youtube_explode_dart)
+- **Background Tasks:** [flutter_foreground_task](https://pub.dev/packages/flutter_foreground_task)
+- **Styling:** [Google Fonts](https://pub.dev/packages/google_fonts) (Poppins)
+- **Caching:** [cached_network_image](https://pub.dev/packages/cached_network_image)
 
 
 ---
 
-## 📈 Upcoming Features & Current Progress
+## 📈 Features & Current Progress
 
-We're constantly working to improve the app and bring new features to life. Below is a list of exciting features we're planning to add.
+We're constantly working to improve the app and bring new features to life. Below is a list of features already implemented and those we're planning to add.
 
 Those marked with **✅** are already live!
 
-- 🛎️ **Local Notifications**  
+- 🛎️ **Local Notifications** – Basic foreground notification for controls **✅**
 - ⏰ **Sleep Timer/Reminder**  
 - 🎛️ **Notification Bar Controls** – Showing audio controls and allowing playback even when the app is off-screen **✅**  
 - ⭐ **Audio Book Rating & Reviews**  
-- 🎨 **Smooth App Animations** **✅**  
-- 🗂️ **Category Page** – For easier book discovery
+- 🎨 **Smooth App Animations** – Hero transitions and fluid scrolling **✅**  
+- 🗂️ **Category & Author Pages** – For easier book and author discovery **✅**
 - 📖 **Life Story Section** – Featuring life stories for popular books
-- 🔍 **Search Bar Functionality**
-- 💾 **Download Audio for Offline Listening**  **✅**  
-- 🛠️ **Database Creation** – Optimizing the code and improving database performance  **✅**  
-- 🌐 **API Improvements**  **✅**   
-- ⚙️ **Setting Configuration** – Making app settings dynamically configurable
-- 📌 **Bookmark Functionality**  
-- 🔄 **Audio Playback Continuation** – Audio continues playing after the app is closed **✅**
-- 🎵 **Compact music/video player for easy access** **✅**
+- 🔍 **Search Bar Functionality** – Full search capabilities **✅**
+- 💾 **Download Audio for Offline Listening** – Save your favorite books for offline use **✅**  
+- 🛠️ **Database Optimization** – Using Isar for fast and efficient local storage **✅**  
+- 🌐 **API & Language Support** – Multi-language support (English/Bengali) and dynamic browse modes **✅**   
+- ⚙️ **Setting Configuration** – Library management with History, Liked, and Playlists **✅**
+- 📌 **Playlist & Bookmark Functionality** – Create custom playlists for your audiobooks **✅**  
+- 🔄 **Audio Playback Continuation** – Audio continues playing after the app is closed/in background **✅**
+- 🎵 **Smart Media Player** – Playback speed control (0.5x to 2.0x), seek controls, and position saving **✅**
+- 🤖 **Recommendation System** – Personalized book suggestions based on your interests **✅**
+- 🌗 **Dark & Light Mode** – Full theme support for comfortable listening **✅**
 
 ---
 

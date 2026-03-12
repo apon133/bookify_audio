@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
+import '../services/sponsor_block_service.dart';
 
 /// State of the [BookifyAudioPlayerController]
 class BookifyAudioPlayerState {
@@ -13,6 +14,7 @@ class BookifyAudioPlayerState {
   final String? videoId;
   final String? error;
   final String? loadId; // Unique ID for each load to force player rebuild
+  final List<dynamic>? sponsorSegments; // SponsorBlock segments to skip
 
   BookifyAudioPlayerState({
     this.isLoading = false,
@@ -23,6 +25,7 @@ class BookifyAudioPlayerState {
     this.videoId,
     this.error,
     this.loadId,
+    this.sponsorSegments,
   });
 
   BookifyAudioPlayerState copyWith({
@@ -34,6 +37,7 @@ class BookifyAudioPlayerState {
     String? videoId,
     String? error,
     String? loadId,
+    List<dynamic>? sponsorSegments,
   }) {
     return BookifyAudioPlayerState(
       isLoading: isLoading ?? this.isLoading,
@@ -44,6 +48,7 @@ class BookifyAudioPlayerState {
       videoId: videoId ?? this.videoId,
       error: error ?? this.error,
       loadId: loadId ?? this.loadId,
+      sponsorSegments: sponsorSegments ?? this.sponsorSegments,
     );
   }
 }
@@ -129,6 +134,18 @@ class BookifyAudioPlayerController
     // Update loading state
     await Future.delayed(const Duration(milliseconds: 500));
     value = value.copyWith(isLoading: false);
+
+    // Fetch SponsorBlock segments
+    _fetchSponsorSegments(videoId);
+  }
+
+  Future<void> _fetchSponsorSegments(String videoId) async {
+    try {
+      final segments = await SponsorBlockService().getSegments(videoId);
+      value = value.copyWith(sponsorSegments: segments);
+    } catch (e) {
+      print('SponsorBlock error: $e');
+    }
   }
 
   void _onPlayerStateChange() {
@@ -257,8 +274,26 @@ class BookifyAudioPlayerController
       final playerState = _youtubeController!.value;
       final metadata = _youtubeController!.metadata;
 
+      double currentTime = playerState.position.inSeconds.toDouble();
+
+      // Check for SponsorBlock segments to skip
+      if (value.sponsorSegments != null && value.sponsorSegments!.isNotEmpty) {
+        for (final segment in value.sponsorSegments!) {
+          if (segment is SponsorSegment) {
+            // If current time is within segment, skip to end of segment
+            if (currentTime >= segment.start && currentTime < segment.end) {
+              print(
+                  'SponsorBlock: Skipping segment from ${segment.start} to ${segment.end}');
+              await seekTo(segment.end);
+              currentTime = segment.end;
+              break; // Only skip one segment at a time
+            }
+          }
+        }
+      }
+
       value = value.copyWith(
-        currentTime: playerState.position.inSeconds.toDouble(),
+        currentTime: currentTime,
         duration: metadata.duration.inSeconds.toDouble(),
         isPlaying: playerState.isPlaying,
         title: metadata.title.isNotEmpty ? metadata.title : value.title,
