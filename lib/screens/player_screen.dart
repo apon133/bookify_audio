@@ -11,8 +11,30 @@ class PlayerScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final Map<String, dynamic> args =
-        ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
+    final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+
+    // Handle missing arguments (e.g. on Hot Restart/Web Refresh)
+    if (args == null || args['episode'] == null || args['book'] == null || args['author'] == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Audio Player')),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.music_off, size: 48, color: Colors.grey),
+              const SizedBox(height: 16),
+              const Text('Session was interrupted.'),
+              const SizedBox(height: 8),
+              ElevatedButton(
+                onPressed: () => Navigator.of(context).pushReplacementNamed('/'),
+                child: const Text('Back to Library'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     final Episode episode = args['episode'] as Episode;
     final Book book = args['book'] as Book;
     final Author author = args['author'] as Author;
@@ -201,8 +223,8 @@ class PlayerScreen extends ConsumerWidget {
                     IconButton(
                       icon: Icon(
                         audioPlayerNotifier.isPlaying
-                            ? Icons.pause_circle_filled
-                            : Icons.play_circle_filled,
+                            ? Icons.play_circle_filled
+                            : Icons.pause_circle_filled,
                         size: 64,
                         color: Theme.of(context).colorScheme.primary,
                       ),

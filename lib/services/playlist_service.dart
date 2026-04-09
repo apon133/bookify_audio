@@ -1,22 +1,16 @@
+import 'package:flutter/foundation.dart';
 import 'package:isar/isar.dart';
-import 'package:path_provider/path_provider.dart';
+import 'package:hive/hive.dart';
 import '../models/models.dart';
 import '../models/isar_models.dart';
+import 'storage_service.dart';
 
 class PlaylistService {
-  static late Isar isar;
+  static Isar get isar => StorageService.isar;
+  static bool get _isHive => kIsWeb;
 
   static Future<void> init() async {
-    final dir = await getApplicationDocumentsDirectory();
-    isar = await Isar.open(
-      [
-        PlaylistEntitySchema,
-        HistoryItemEntitySchema,
-        AppSettingsEntitySchema,
-        ReactionEntitySchema,
-      ],
-      directory: dir.path,
-    );
+    await StorageService.init();
   }
 
   // --- Mappers ---
@@ -71,7 +65,7 @@ class PlaylistService {
       id: entity.id,
       name: entity.name,
       image: entity.image,
-      books: [], // We don't store unrelated books in the playlist item
+      books: [],
     );
   }
 
@@ -95,9 +89,16 @@ class PlaylistService {
   // --- CRUD Operations ---
 
   List<Playlist> getPlaylists() {
-    final entities =
-        isar.playlistEntitys.where().sortByCreatedAtDesc().findAllSync();
-    return entities.map(_fromPlaylistEntity).toList();
+    if (_isHive) {
+      final box = Hive.box<PlaylistEntity>('playlists');
+      final entities = box.values.toList()
+        ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return entities.map(_fromPlaylistEntity).toList();
+    } else {
+      final entities =
+          isar.playlistEntitys.where().sortByCreatedAtDesc().findAllSync();
+      return entities.map(_fromPlaylistEntity).toList();
+    }
   }
 
   Future<void> createPlaylist(String name) async {
@@ -106,17 +107,29 @@ class PlaylistService {
       ..createdAt = DateTime.now()
       ..items = [];
 
-    await isar.writeTxn(() async {
-      await isar.playlistEntitys.put(playlist);
-    });
+    if (_isHive) {
+      final box = Hive.box<PlaylistEntity>('playlists');
+      // Use timestamp as a simple unique ID for web
+      playlist.id = DateTime.now().millisecondsSinceEpoch;
+      await box.put(playlist.id, playlist);
+    } else {
+      await isar.writeTxn(() async {
+        await isar.playlistEntitys.put(playlist);
+      });
+    }
   }
 
   Future<void> deletePlaylist(String playlistId) async {
     final id = int.tryParse(playlistId);
     if (id != null) {
-      await isar.writeTxn(() async {
-        await isar.playlistEntitys.delete(id);
-      });
+      if (_isHive) {
+        final box = Hive.box<PlaylistEntity>('playlists');
+        await box.delete(id);
+      } else {
+        await isar.writeTxn(() async {
+          await isar.playlistEntitys.delete(id);
+        });
+      }
     }
   }
 
@@ -125,59 +138,85 @@ class PlaylistService {
     final id = int.tryParse(playlistId);
     if (id == null) return;
 
-    await isar.writeTxn(() async {
-      final playlist = await isar.playlistEntitys.get(id);
+    if (_isHive) {
+      final box = Hive.box<PlaylistEntity>('playlists');
+      final playlist = box.get(id);
       if (playlist != null) {
-        // Check for duplicates
         if (playlist.items.any((item) => item.book.originalId == book.id)) {
           return;
         }
-
         final newItem = PlaylistItemEntity()
           ..book = _toBookEntity(book)
           ..author = _toAuthorEntity(author)
           ..addedAt = DateTime.now();
-
-        // Isar lists are not observable in the same way, we verify we can modify the list
-        // We must re-assign or modify the list
-        final newItems = [...playlist.items, newItem];
-        playlist.items = newItems; // embedded list update
-
-        await isar.playlistEntitys.put(playlist);
+        playlist.items.add(newItem);
+        await box.put(id, playlist);
       }
-    });
+    } else {
+      await isar.writeTxn(() async {
+        final playlist = await isar.playlistEntitys.get(id);
+        if (playlist != null) {
+          if (playlist.items.any((item) => item.book.originalId == book.id)) {
+            return;
+          }
+          final newItem = PlaylistItemEntity()
+            ..book = _toBookEntity(book)
+            ..author = _toAuthorEntity(author)
+            ..addedAt = DateTime.now();
+          final newItems = [...playlist.items, newItem];
+          playlist.items = newItems;
+          await isar.playlistEntitys.put(playlist);
+        }
+      });
+    }
   }
 
   Future<void> removeFromPlaylist(String playlistId, String bookId) async {
     final id = int.tryParse(playlistId);
     if (id == null) return;
 
-    await isar.writeTxn(() async {
-      final playlist = await isar.playlistEntitys.get(id);
+    if (_isHive) {
+      final box = Hive.box<PlaylistEntity>('playlists');
+      final playlist = box.get(id);
       if (playlist != null) {
-        // Filter out the item
-        final originalLength = playlist.items.length;
         playlist.items = playlist.items
             .where((item) => item.book.originalId != bookId)
             .toList();
-
-        if (playlist.items.length != originalLength) {
+        await box.put(id, playlist);
+      }
+    } else {
+      await isar.writeTxn(() async {
+        final playlist = await isar.playlistEntitys.get(id);
+        if (playlist != null) {
+          playlist.items = playlist.items
+              .where((item) => item.book.originalId != bookId)
+              .toList();
           await isar.playlistEntitys.put(playlist);
         }
-      }
-    });
+      });
+    }
   }
 
   Future<void> renamePlaylist(String playlistId, String newName) async {
     final id = int.tryParse(playlistId);
     if (id == null) return;
 
-    await isar.writeTxn(() async {
-      final playlist = await isar.playlistEntitys.get(id);
+    if (_isHive) {
+      final box = Hive.box<PlaylistEntity>('playlists');
+      final playlist = box.get(id);
       if (playlist != null) {
         playlist.name = newName;
-        await isar.playlistEntitys.put(playlist);
+        await box.put(id, playlist);
       }
-    });
+    } else {
+      await isar.writeTxn(() async {
+        final playlist = await isar.playlistEntitys.get(id);
+        if (playlist != null) {
+          playlist.name = newName;
+          await isar.playlistEntitys.put(playlist);
+        }
+      });
+    }
   }
 }
+

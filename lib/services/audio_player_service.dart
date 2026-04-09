@@ -120,14 +120,16 @@ class AudioPlayerService {
       // Always load the URL. Pass the startPosition to avoid starting at 0.
       await _controller.load(episode.audioUrl, startPosition: positionToSeek);
 
-      // Give the WebView more time to initialize and load the video
-      await Future.delayed(const Duration(milliseconds: 1000));
+      // Give the WebView a bit of time to initialize
+      if (!kIsWeb) {
+        await Future.delayed(const Duration(milliseconds: 500));
+        // Explicitly play to ensure audio starts on mobile
+        await _controller.play();
+      }
 
-      // Explicitly play to ensure audio starts
-      await _controller.play();
-
-      _updateState(isLoading: false, isPlaying: true);
+      _updateState(isLoading: false);
     } catch (e) {
+      print('AudioPlayerService: Error playing episode: $e');
       _updateState(isLoading: false, isPlaying: false);
       rethrow;
     }
@@ -135,12 +137,10 @@ class AudioPlayerService {
 
   Future<void> play() async {
     await _controller.play();
-    _updateState(isPlaying: true);
   }
 
   Future<void> pause() async {
     await _controller.pause();
-    _updateState(isPlaying: false);
   }
 
   Future<void> seek(Duration position) async {

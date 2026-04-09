@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
-import 'package:youtube_player_flutter/youtube_player_flutter.dart';
+import 'package:youtube_player_flutter/youtube_player_flutter.dart' as mobile;
+import 'package:youtube_player_iframe/youtube_player_iframe.dart' as web;
 import '../services/sponsor_block_service.dart';
 
 /// State of the [BookifyAudioPlayerController]
@@ -53,86 +55,90 @@ class BookifyAudioPlayerState {
   }
 }
 
-/// Controller for YouTube-based audio playback using youtube_player_flutter
-class BookifyAudioPlayerController
-    extends ValueNotifier<BookifyAudioPlayerState> {
-  YoutubePlayerController? _youtubeController;
+/// Controller for YouTube-based audio playback using the appropriate platform player
+class BookifyAudioPlayerController extends ValueNotifier<BookifyAudioPlayerState> {
+  mobile.YoutubePlayerController? _mobileController;
+  web.YoutubePlayerController? _webController;
   Timer? _progressTimer;
 
   BookifyAudioPlayerController() : super(BookifyAudioPlayerState());
 
-  YoutubePlayerController? get youtubeController => _youtubeController;
+  mobile.YoutubePlayerController? get mobileController => _mobileController;
+  web.YoutubePlayerController? get webController => _webController;
 
   Future<void> load(String url, {double startPosition = 0}) async {
-    print('Loading URL: $url at position: $startPosition');
-    final videoId = YoutubePlayer.convertUrlToId(url);
+    print('Loading URL: $url at position: $startPosition (Web: $kIsWeb)');
+    
+    // Convert URL to ID
+    String? videoId;
+    if (kIsWeb) {
+      videoId = web.YoutubePlayerController.convertUrlToId(url);
+    } else {
+      videoId = mobile.YoutubePlayer.convertUrlToId(url);
+    }
+    
     if (videoId == null) {
       value = value.copyWith(error: 'Invalid YouTube URL');
       return;
     }
 
-    // Dispose previous controller if exists
-    if (_youtubeController != null) {
-      _progressTimer?.cancel();
-
-      // Pause before disposing to ensure clean state
-      try {
-        _youtubeController?.pause();
-        await Future.delayed(const Duration(milliseconds: 300));
-      } catch (e) {
-        // Ignore errors during pause
-      }
-
-      _youtubeController?.dispose();
-      _youtubeController = null;
-
-      // Add delay to ensure complete disposal
-      await Future.delayed(const Duration(milliseconds: 200));
-    }
+    // Dispose previous controllers & timers
+    _progressTimer?.cancel();
+    _mobileController?.dispose();
+    _webController?.close();
+    _mobileController = null;
+    _webController = null;
 
     final newLoadId = DateTime.now().toIso8601String();
-    print('Generated new loadId: $newLoadId for video: $videoId');
-
+    
     // Reset state before loading new video
     value = BookifyAudioPlayerState(
       isLoading: true,
+      isPlaying: true, // Optimistically set to true because autoPlay is enabled
       videoId: videoId,
       error: null,
       loadId: newLoadId,
     );
 
-    // Create new controller with low quality settings to save bandwidth
-    _youtubeController = YoutubePlayerController(
-      initialVideoId: videoId,
-      flags: YoutubePlayerFlags(
+    if (kIsWeb) {
+      _webController = web.YoutubePlayerController.fromVideoId(
+        videoId: videoId,
         autoPlay: true,
-        mute: false,
-        // Force low quality to save bandwidth
-        forceHD: false,
-        // Enable background audio
-        enableCaption: false,
-        // Hide controls since we're using it as audio player
-        hideControls: true,
-        // Disable fullscreen
-        disableDragSeek: false,
-        // Loop if needed
-        loop: false,
-        // Start from saved position
-        startAt: startPosition.toInt(),
-      ),
-    );
-
-    // Listen to player state changes
-    _youtubeController!.addListener(_onPlayerStateChange);
+        startSeconds: startPosition,
+        params: web.YoutubePlayerParams(
+          showControls: false,
+          mute: false,
+          showFullscreenButton: false,
+          enableCaption: false,
+        ),
+      );
+      // Listen for updates on web
+      _webController!.stream.listen((state) {
+        _onWebPlayerStateChange(state);
+      });
+    } else {
+      _mobileController = mobile.YoutubePlayerController(
+        initialVideoId: videoId,
+        flags: mobile.YoutubePlayerFlags(
+          autoPlay: true,
+          mute: false,
+          forceHD: false,
+          enableCaption: false,
+          hideControls: true,
+          startAt: startPosition.toInt(),
+        ),
+      );
+      _mobileController!.addListener(_onMobilePlayerStateChange);
+    }
 
     // Start progress timer
     _startProgressTimer();
 
-    // Notify listeners that controller has changed (triggers widget rebuild)
+    // Trigger widget rebuild
     notifyListeners();
 
     // Update loading state
-    await Future.delayed(const Duration(milliseconds: 500));
+    await Future.delayed(Duration(milliseconds: kIsWeb ? 100 : 300));
     value = value.copyWith(isLoading: false);
 
     // Fetch SponsorBlock segments
@@ -148,34 +154,48 @@ class BookifyAudioPlayerController
     }
   }
 
-  void _onPlayerStateChange() {
-    if (_youtubeController == null) return;
-
-    final metadata = _youtubeController!.metadata;
-    final playerState = _youtubeController!.value;
-
+  void _onMobilePlayerStateChange() {
+    if (_mobileController == null || kIsWeb) return;
+    final metadata = _mobileController!.metadata;
+    final playerState = _mobileController!.value;
     value = value.copyWith(
-      isPlaying: playerState.isPlaying,
+      isPlaying: playerState.isPlaying || playerState.playerState == mobile.PlayerState.buffering,
       currentTime: playerState.position.inSeconds.toDouble(),
       duration: metadata.duration.inSeconds.toDouble(),
       title: metadata.title.isNotEmpty ? metadata.title : value.title,
     );
   }
 
+  void _onWebPlayerStateChange(state) {
+    if (_webController == null) return;
+    value = value.copyWith(
+      isPlaying: state.playerState == web.PlayerState.playing ||
+          state.playerState == web.PlayerState.buffering,
+    );
+  }
+
+
+
   Future<void> play() async {
-    if (_youtubeController != null) {
-      _youtubeController!.play();
-      await Future.delayed(const Duration(milliseconds: 200));
-      _updateProgress();
+    value = value.copyWith(isPlaying: true);
+    if (kIsWeb) {
+      _webController?.playVideo();
+    } else {
+      _mobileController?.play();
     }
+    await Future.delayed(const Duration(milliseconds: 500));
+    _updateProgress();
   }
 
   Future<void> pause() async {
-    if (_youtubeController != null) {
-      _youtubeController!.pause();
-      await Future.delayed(const Duration(milliseconds: 200));
-      _updateProgress();
+    value = value.copyWith(isPlaying: false);
+    if (kIsWeb) {
+      _webController?.pauseVideo();
+    } else {
+      _mobileController?.pause();
     }
+    await Future.delayed(const Duration(milliseconds: 500));
+    _updateProgress();
   }
 
   Future<void> togglePlayPause() async {
@@ -187,10 +207,12 @@ class BookifyAudioPlayerController
   }
 
   Future<void> seekTo(double seconds) async {
-    if (_youtubeController != null) {
-      _youtubeController!.seekTo(Duration(seconds: seconds.toInt()));
-      value = value.copyWith(currentTime: seconds);
+    if (kIsWeb) {
+      _webController?.seekTo(seconds: seconds);
+    } else {
+      _mobileController?.seekTo(Duration(seconds: seconds.toInt()));
     }
+    value = value.copyWith(currentTime: seconds);
   }
 
   Future<void> seekRelative(double seconds) async {
@@ -199,64 +221,8 @@ class BookifyAudioPlayerController
   }
 
   Future<void> setPlaybackRate(double rate) async {
-    if (_youtubeController != null) {
-      // YouTube IFrame API supports: 0.25, 0.5, 1, 1.5, 2
-      // We'll pass whatever the user provides, but it might only honor supported values.
-      // youtube_player_flutter does NOT expose setPlaybackRate in the Controller class directly,
-      // but it might via flags or custom JS.
-      // Wait, checking documentation... it actually DOES NOT have setPlaybackRate in the controller.
-      // We must use evaluateJavascript.
-      // The wrapper usually exposes it. Let's check if 'setPlaybackRate' exists on the controller in newer versions?
-      // Assuming it does NOT based on typical issues.
-      // However, we can use `_youtubeController.setPlaybackRate` if it exists.
-      // Since I can't verify the package version, I will try to use `evaluateJavascript`.
-      // But `YoutubePlayerController` might abstract the webview.
-      // Let's try to assume it exists or use `evaluateJavascript` on the internal webview if accessible.
-      // Actually, looking at typical usage, one uses flags to set speed initially, but runtime change?
-      // It seems we need to evaluate JS.
-
-      // Attempt 1: Check if method exists (I can't check at runtime here).
-      // Attempt 2: Use low-level call.
-      // _youtubeController.setSize(...) exists.
-
-      // Let's use evaluateJavascript to call 'player.setPlaybackRate(rate)'.
-      // But we need access to the underlying webview controller.
-      // youtube_player_flutter controller usually allows `evaluateJavascript`.
-      // NOTE: If the package version is old, it might not work.
-
-      // Let's try the safest bet: The controller usually has `evaluateJavascript`.
-      // If not, we might fail.
-
-      // Actually, standard `youtube_player_flutter` controller DOES NOT have setPlaybackRate directly exposed in all versions.
-      // But `play`, `pause` etc call JS.
-      // Let's assume we can add it via generic JS evaluation.
-      // 'player' is usually the object name in the injected JS.
-
-      // However, I see I don't see `evaluateJavascript` on `YoutubePlayerController` in the import list.
-      // Wait, `youtube_player_flutter` exports it.
-
-      // Let's just try to assume the method exists on the controller? No, unsafe.
-      // I'll try to use `_youtubeController.evaluateJavascript` if available.
-
-      // Actually, the best way is often to reload with different flags, but that interrupts playback.
-      // Let's try `_youtubeController.setPlaybackRate(rate)` if I can presume it exists?
-      // Many forks have it.
-      // If it doesn't, this code will fail analysis.
-      // I'll assume standard package.
-      // Standard package 8.1.2 has `setPlaybackRate`? No.
-
-      // I will implement it using `evaluateJavascript` assuming the controller exposes it.
-      // If the controller doesn't expose `evaluateJavascript`, I'll be in trouble.
-
-      // Let's look at `_youtubeController` type. It is `YoutubePlayerController`.
-
-      // Plan B: In `package/audio_player.dart`, `BookifyAudioPlayerController` is ours.
-      // I'll add `setPlaybackRate` to OUR controller, and inside I'll try to find a way.
-      // If `YoutubePlayerController` has no such method, I will use `evaluateJavascript` source:
-      // source: `source: 'player.setPlaybackRate($rate);'`
-
-      // Let's guess `_youtubeController?.evaluateJavascript` exists.
-      _youtubeController?.setPlaybackRate(rate);
+    if (kIsWeb) {
+      _webController?.setPlaybackRate(rate);
     }
   }
 
@@ -268,51 +234,59 @@ class BookifyAudioPlayerController
   }
 
   Future<void> _updateProgress() async {
-    if (_youtubeController == null) return;
+    double currentTime = 0;
+    double duration = 0;
+    bool isPlaying = false;
+    String title = value.title;
 
-    try {
-      final playerState = _youtubeController!.value;
-      final metadata = _youtubeController!.metadata;
+    if (kIsWeb && _webController != null) {
+      currentTime = await _webController!.currentTime;
+      duration = await _webController!.duration;
+      isPlaying = _webController!.value.playerState == web.PlayerState.playing ||
+          _webController!.value.playerState == web.PlayerState.buffering;
+    } else if (!kIsWeb && _mobileController != null) {
+      final state = _mobileController!.value;
+      currentTime = state.position.inSeconds.toDouble();
+      duration = _mobileController!.metadata.duration.inSeconds.toDouble();
+      isPlaying = state.isPlaying || state.playerState == mobile.PlayerState.buffering;
+      title = _mobileController!.metadata.title.isNotEmpty ? _mobileController!.metadata.title : title;
+    } else {
+      return;
+    }
 
-      double currentTime = playerState.position.inSeconds.toDouble();
 
-      // Check for SponsorBlock segments to skip
-      if (value.sponsorSegments != null && value.sponsorSegments!.isNotEmpty) {
-        for (final segment in value.sponsorSegments!) {
-          if (segment is SponsorSegment) {
-            // If current time is within segment, skip to end of segment
-            if (currentTime >= segment.start && currentTime < segment.end) {
-              print(
-                  'SponsorBlock: Skipping segment from ${segment.start} to ${segment.end}');
-              await seekTo(segment.end);
-              currentTime = segment.end;
-              break; // Only skip one segment at a time
-            }
+    // SponsorBlock skipping logic
+    if (value.sponsorSegments != null && value.sponsorSegments!.isNotEmpty) {
+      for (final segment in value.sponsorSegments!) {
+        if (segment is SponsorSegment) {
+          if (currentTime >= segment.start && currentTime < segment.end) {
+            print('SponsorBlock: Skipping segment from ${segment.start} to ${segment.end}');
+            await seekTo(segment.end);
+            currentTime = segment.end;
+            break;
           }
         }
       }
-
-      value = value.copyWith(
-        currentTime: currentTime,
-        duration: metadata.duration.inSeconds.toDouble(),
-        isPlaying: playerState.isPlaying,
-        title: metadata.title.isNotEmpty ? metadata.title : value.title,
-      );
-    } catch (e) {
-      // Ignore errors during progress update
     }
+
+    value = value.copyWith(
+      currentTime: currentTime,
+      duration: duration,
+      isPlaying: isPlaying,
+      title: title,
+    );
   }
 
   @override
   void dispose() {
     _progressTimer?.cancel();
-    _youtubeController?.dispose();
+    _mobileController?.dispose();
+    _webController?.close();
     super.dispose();
   }
 }
 
 /// The actual widget that hosts the YouTube player (hidden for audio-only playback).
-/// Place this once in your widget tree (e.g., in a Stack or at the bottom of a Scaffold).
 class BookifyAudioWebPlayer extends StatefulWidget {
   final BookifyAudioPlayerController controller;
   final Function(String videoId, double position)? onProgressSave;
@@ -337,6 +311,7 @@ class _BookifyAudioWebPlayerState extends State<BookifyAudioWebPlayer>
   }
 
   void _initForegroundTask() {
+    if (kIsWeb) return;
     FlutterForegroundTask.init(
       androidNotificationOptions: AndroidNotificationOptions(
         channelId: 'audiobook_player_channel',
@@ -358,17 +333,13 @@ class _BookifyAudioWebPlayerState extends State<BookifyAudioWebPlayer>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (kIsWeb) return;
     if (state == AppLifecycleState.paused) {
       final shouldPlayInBackground = widget.controller.value.isPlaying;
       _startForegroundService();
-
-      // YouTube player automatically pauses when the app goes to the background.
-      // We force it to resume if it was playing.
       if (shouldPlayInBackground) {
         Future.delayed(const Duration(milliseconds: 250), () {
-          if (mounted) {
-            widget.controller.play();
-          }
+          if (mounted) widget.controller.play();
         });
       }
     } else if (state == AppLifecycleState.resumed) {
@@ -377,6 +348,7 @@ class _BookifyAudioWebPlayerState extends State<BookifyAudioWebPlayer>
   }
 
   Future<void> _startForegroundService() async {
+    if (kIsWeb) return;
     if (widget.controller.value.isPlaying) {
       await FlutterForegroundTask.startService(
         notificationTitle: 'AudioBook Player',
@@ -386,6 +358,7 @@ class _BookifyAudioWebPlayerState extends State<BookifyAudioWebPlayer>
   }
 
   Future<void> _stopForegroundService() async {
+    if (kIsWeb) return;
     await FlutterForegroundTask.stopService();
   }
 
@@ -398,51 +371,48 @@ class _BookifyAudioWebPlayerState extends State<BookifyAudioWebPlayer>
 
   @override
   Widget build(BuildContext context) {
-    // Listen to controller changes to rebuild when new episodes are loaded
     return ValueListenableBuilder<BookifyAudioPlayerState>(
       valueListenable: widget.controller,
       builder: (context, state, child) {
-        if (state.isLoading) {
-          print(
-              'BookifyAudioWebPlayer: isLoading is true, showing loader or keeping previous state');
-        }
+        final videoId = state.videoId;
+        if (videoId == null) return const SizedBox.shrink();
 
-        // Hide the YouTube player widget (audio-only mode)
-        return SizedBox(
-          width: 1,
-          height: 1,
-          child: Opacity(
-            opacity: 0,
-            child: widget.controller.youtubeController != null
-                ? YoutubePlayer(
-                    key: ValueKey(
-                        '${state.videoId}_${state.loadId}'), // Force rebuild on video change or reload
-                    controller: widget.controller.youtubeController!,
-                    showVideoProgressIndicator: false,
-                    progressIndicatorColor: Colors.transparent,
-                    progressColors: const ProgressBarColors(
-                      playedColor: Colors.transparent,
-                      handleColor: Colors.transparent,
+        // Check platform specific controllers
+        final mobileCtrl = widget.controller.mobileController;
+        final webCtrl = widget.controller.webController;
+        if (mobileCtrl == null && webCtrl == null) return const SizedBox.shrink();
+
+        return Positioned(
+          left: -1000,
+          top: -1000,
+          child: SizedBox(
+            width: 200,
+            height: 200,
+            child: Opacity(
+              opacity: 0.01,
+              child: kIsWeb
+                  ? web.YoutubePlayer(
+                      key: ValueKey('${videoId}_${state.loadId}'),
+                      controller: webCtrl!,
+                    )
+                  : mobile.YoutubePlayer(
+                      key: ValueKey('${videoId}_${state.loadId}'),
+                      controller: mobileCtrl!,
+                      showVideoProgressIndicator: false,
+                      onReady: () {
+                        print('YoutubePlayer Mobile: Ready');
+                        mobileCtrl.unMute();
+                        mobileCtrl.play();
+                        widget.controller.value =
+                            widget.controller.value.copyWith(isLoading: false);
+                      },
+                      onEnded: (metadata) {
+                        if (widget.onProgressSave != null) {
+                          widget.onProgressSave!(videoId, state.duration);
+                        }
+                      },
                     ),
-                    onReady: () {
-                      // Player is ready
-                      widget.controller.value =
-                          widget.controller.value.copyWith(
-                        isLoading: false,
-                      );
-                    },
-                    onEnded: (metadata) {
-                      // Video ended
-                      if (widget.onProgressSave != null &&
-                          widget.controller.value.videoId != null) {
-                        widget.onProgressSave!(
-                          widget.controller.value.videoId!,
-                          widget.controller.value.duration,
-                        );
-                      }
-                    },
-                  )
-                : const SizedBox.shrink(),
+            ),
           ),
         );
       },

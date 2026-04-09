@@ -10,8 +10,30 @@ class BookScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final Map<String, dynamic> args =
-        ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
+    final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+
+    // Handle missing arguments (e.g. on Hot Restart/Web Refresh)
+    if (args == null || args['book'] == null || args['author'] == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Book Details')),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, size: 48, color: Colors.grey),
+              const SizedBox(height: 16),
+              const Text('Book data is missing.'),
+              const SizedBox(height: 8),
+              ElevatedButton(
+                onPressed: () => Navigator.of(context).pushReplacementNamed('/'),
+                child: const Text('Back to Library'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     final Book book = args['book'] as Book;
     final Author author = args['author'] as Author;
 

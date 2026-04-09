@@ -4,8 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:bookify_audio/package/audio_player.dart';
 import 'package:bookify_audio/providers/audio_player_provider.dart';
-import 'package:bookify_audio/services/history_service.dart';
-import 'package:bookify_audio/services/playlist_service.dart';
 import 'screens/home_screen.dart';
 import 'screens/book_screen.dart';
 import 'screens/player_screen.dart';
@@ -13,12 +11,13 @@ import 'screens/search_screen.dart';
 import 'screens/main_screen.dart';
 import 'screens/settings_screen.dart';
 
+import 'package:bookify_audio/services/storage_service.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Services (Isar)
-  await PlaylistService.init();
-  await HistoryService.init();
+  // Initialize Storage Service (Hive for Web, Isar for Mobile)
+  await StorageService.init();
 
   // Lock to portrait mode for better audio-book experience
   await SystemChrome.setPreferredOrientations([
@@ -68,16 +67,23 @@ class MyApp extends ConsumerWidget {
         '/settings': (context) => const SettingsScreen(),
       },
       builder: (context, child) {
-        final playerProvider = ref.watch(audioPlayerProvider);
         return Stack(
           children: [
             if (child != null) child,
-            BookifyAudioWebPlayer(
-              controller: playerProvider.service.controller,
+            Consumer(
+              builder: (context, ref, _) {
+                // Stabilize access: only watch if we really need to rebuild the player itself
+                // (e.g., when the videoId or current controller changes). 
+                // We use ref.read for the stable controller to avoid redundant rebuilds 
+                // triggered by position/duration updates in the notifier.
+                final controller = ref.read(audioPlayerProvider).service.controller;
+                return BookifyAudioWebPlayer(controller: controller);
+              },
             ),
           ],
         );
       },
+
     );
   }
 }
