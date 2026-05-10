@@ -1,37 +1,40 @@
 name: bookify_audio
-description: "Bookify Audio"
+description: "A new Flutter project."
+publish_to: 'none'
 
-version: 1.0.5+6
+version: 1.0.0+1
 
 environment:
-  sdk: ^3.6.0
+  sdk: ^3.5.0
 
 dependencies:
   flutter:
     sdk: flutter
 
-  cupertino_icons: ^1.0.8
-  flutter_riverpod: ^2.6.1
-  google_fonts: ^6.2.1
-  cached_network_image: ^3.4.1
-  path_provider: ^2.1.5
-  icons_launcher: ^3.0.3
-  flutter_foreground_task: ^9.2.0
-  youtube_player_flutter: ^9.1.3
-  isar: ^3.1.0+1
-  isar_flutter_libs: ^3.1.0+1
-  http: ^1.2.1
-  hive: ^2.2.3
-  hive_flutter: ^1.1.0
-  youtube_player_iframe: ^5.2.2
+  cupertino_icons: 
+  flutter_riverpod: 
+  google_fonts:
+  cached_network_image: 
+  path_provider:
+  icons_launcher: 
+  flutter_foreground_task:
+  youtube_player_flutter:
+  isar:
+  isar_flutter_libs: 
+  http:
+  hive_ce: 
+  hive_ce_flutter:
+  youtube_player_iframe:
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^5.0.0
-  isar_generator: ^3.1.0+1
-  build_runner: ^2.4.13
-  hive_generator: ^2.0.1
+  flutter_lints: 
+  isar_generator:
+    path: packages/isar_generator
+  build_runner:
+  hive_ce_generator:
+
 
 icons_launcher:
   image_path: "assets/app_icon.png"
@@ -41,10 +44,7 @@ icons_launcher:
     ios:
       enable: true
 
-  flutter_lints: ^5.0.0
-
 flutter:
-
   uses-material-design: true
 
   assets:
@@ -53,15 +53,3 @@ flutter:
     - assets/data/library_bn.json
     - assets/data/library_en.json
     - CHANGELOG.md
-
-  # fonts:
-  #   - family: Schyler
-  #     fonts:
-  #       - asset: fonts/Schyler-Regular.ttf
-  #       - asset: fonts/Schyler-Italic.ttf
-  #         style: italic
-  #   - family: Trajan Pro
-  #     fonts:
-  #       - asset: fonts/TrajanPro.ttf
-  #       - asset: fonts/TrajanPro_Bold.ttf
-  #         weight: 700

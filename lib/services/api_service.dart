@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
-import 'package:isar/isar.dart';
-import 'package:hive/hive.dart';
+import 'isar_wrapper.dart';
+import 'package:hive_ce/hive.dart';
 import '../models/models.dart';
 import '../models/isar_models.dart';
 import 'storage_service.dart';

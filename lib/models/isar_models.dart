@@ -1,5 +1,5 @@
-import 'package:isar/isar.dart';
-import 'package:hive/hive.dart';
+import 'package:isar/isar.dart' if (dart.library.js_interop) 'isar_stubs.dart' if (dart.library.html) 'isar_stubs.dart';
+import 'package:hive_ce/hive.dart';
 
 part 'isar_models.g.dart';
 

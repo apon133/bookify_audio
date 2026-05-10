@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
-import 'package:isar/isar.dart';
-import 'package:hive/hive.dart';
+import 'isar_wrapper.dart';
+import 'package:hive_ce/hive.dart';
 import '../models/models.dart';
 import '../models/isar_models.dart';
 import 'storage_service.dart';
@@ -65,15 +65,21 @@ class HistoryService {
     );
   }
 
-  HistoryItem fromHistoryItemEntity(HistoryItemEntity entity) {
-    return HistoryItem(
-      episode: fromEpisodeEntity(entity.episode),
-      book: fromBookEntity(entity.book),
-      author: fromAuthorEntity(entity.author),
-      position: entity.position,
-      duration: entity.duration,
-      lastPlayed: entity.lastPlayed,
-    );
+  HistoryItem? fromHistoryItemEntity(HistoryItemEntity entity) {
+    try {
+      // Safely access potentially uninitialized late fields
+      return HistoryItem(
+        episode: fromEpisodeEntity(entity.episode),
+        book: fromBookEntity(entity.book),
+        author: fromAuthorEntity(entity.author),
+        position: entity.position,
+        duration: entity.duration,
+        lastPlayed: entity.lastPlayed,
+      );
+    } catch (e) {
+      print('HistoryService: Skipping corrupt history item: $e');
+      return null;
+    }
   }
 
   static Future<void> init() async {}
@@ -127,7 +133,11 @@ class HistoryService {
           _isar.historyItemEntitys.where().sortByLastPlayedDesc().findAllSync();
     }
 
-    final historyItems = items.map(fromHistoryItemEntity).toList();
+    final historyItems = items
+        .map(fromHistoryItemEntity)
+        .where((item) => item != null)
+        .cast<HistoryItem>()
+        .toList();
 
     if (!uniqueByBook) return historyItems;
 

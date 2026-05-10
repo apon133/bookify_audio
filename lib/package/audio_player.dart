@@ -112,8 +112,11 @@ class BookifyAudioPlayerController extends ValueNotifier<BookifyAudioPlayerState
           enableCaption: false,
         ),
       );
+      final webCtrl = _webController;
+      if (webCtrl == null) return;
+
       // Listen for updates on web
-      _webController!.stream.listen((state) {
+      webCtrl.stream.listen((state) {
         _onWebPlayerStateChange(state);
       });
     } else {
@@ -128,7 +131,10 @@ class BookifyAudioPlayerController extends ValueNotifier<BookifyAudioPlayerState
           startAt: startPosition.toInt(),
         ),
       );
-      _mobileController!.addListener(_onMobilePlayerStateChange);
+      final mobileCtrl = _mobileController;
+      if (mobileCtrl != null) {
+        mobileCtrl.addListener(_onMobilePlayerStateChange);
+      }
     }
 
     // Start progress timer
@@ -155,9 +161,11 @@ class BookifyAudioPlayerController extends ValueNotifier<BookifyAudioPlayerState
   }
 
   void _onMobilePlayerStateChange() {
-    if (_mobileController == null || kIsWeb) return;
-    final metadata = _mobileController!.metadata;
-    final playerState = _mobileController!.value;
+    final mobileCtrl = _mobileController;
+    if (mobileCtrl == null) return;
+
+    final metadata = mobileCtrl.metadata;
+    final playerState = mobileCtrl.value;
     value = value.copyWith(
       isPlaying: playerState.isPlaying || playerState.playerState == mobile.PlayerState.buffering,
       currentTime: playerState.position.inSeconds.toDouble(),
@@ -239,17 +247,28 @@ class BookifyAudioPlayerController extends ValueNotifier<BookifyAudioPlayerState
     bool isPlaying = false;
     String title = value.title;
 
-    if (kIsWeb && _webController != null) {
-      currentTime = await _webController!.currentTime;
-      duration = await _webController!.duration;
-      isPlaying = _webController!.value.playerState == web.PlayerState.playing ||
-          _webController!.value.playerState == web.PlayerState.buffering;
-    } else if (!kIsWeb && _mobileController != null) {
-      final state = _mobileController!.value;
+    final webCtrl = _webController;
+    final mobileCtrl = _mobileController;
+
+    if (kIsWeb && webCtrl != null) {
+      try {
+        currentTime = await webCtrl.currentTime;
+        duration = await webCtrl.duration;
+        isPlaying = webCtrl.value.playerState == web.PlayerState.playing ||
+            webCtrl.value.playerState == web.PlayerState.buffering;
+      } catch (e) {
+        print('BookifyAudioPlayer: Error updating web progress: $e');
+        return;
+      }
+    } else if (!kIsWeb && mobileCtrl != null) {
+      final state = mobileCtrl.value;
       currentTime = state.position.inSeconds.toDouble();
-      duration = _mobileController!.metadata.duration.inSeconds.toDouble();
-      isPlaying = state.isPlaying || state.playerState == mobile.PlayerState.buffering;
-      title = _mobileController!.metadata.title.isNotEmpty ? _mobileController!.metadata.title : title;
+      duration = mobileCtrl.metadata.duration.inSeconds.toDouble();
+      isPlaying =
+          state.isPlaying || state.playerState == mobile.PlayerState.buffering;
+      title = mobileCtrl.metadata.title.isNotEmpty
+          ? mobileCtrl.metadata.title
+          : title;
     } else {
       return;
     }
@@ -391,27 +410,19 @@ class _BookifyAudioWebPlayerState extends State<BookifyAudioWebPlayer>
             child: Opacity(
               opacity: 0.01,
               child: kIsWeb
-                  ? web.YoutubePlayer(
-                      key: ValueKey('${videoId}_${state.loadId}'),
-                      controller: webCtrl!,
-                    )
-                  : mobile.YoutubePlayer(
-                      key: ValueKey('${videoId}_${state.loadId}'),
-                      controller: mobileCtrl!,
-                      showVideoProgressIndicator: false,
-                      onReady: () {
-                        print('YoutubePlayer Mobile: Ready');
-                        mobileCtrl.unMute();
-                        mobileCtrl.play();
-                        widget.controller.value =
-                            widget.controller.value.copyWith(isLoading: false);
-                      },
-                      onEnded: (metadata) {
-                        if (widget.onProgressSave != null) {
-                          widget.onProgressSave!(videoId, state.duration);
-                        }
-                      },
-                    ),
+                  ? (webCtrl != null
+                      ? web.YoutubePlayer(
+                          key: ValueKey('${videoId}_${state.loadId}'),
+                          controller: webCtrl,
+                        )
+                      : const SizedBox.shrink())
+                  : (mobileCtrl != null
+                      ? mobile.YoutubePlayer(
+                          key: ValueKey('${videoId}_${state.loadId}'),
+                          controller: mobileCtrl,
+                          showVideoProgressIndicator: false,
+                        )
+                      : const SizedBox.shrink()),
             ),
           ),
         );

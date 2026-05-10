@@ -1,11 +1,10 @@
 import 'package:flutter/foundation.dart';
-import 'package:hive_flutter/hive_flutter.dart';
-import 'package:isar/isar.dart';
-import 'package:path_provider/path_provider.dart';
+import 'package:hive_ce_flutter/hive_flutter.dart';
+import 'isar_storage_helper_stub.dart' if (dart.library.io) 'isar_storage_helper.dart';
 import '../models/isar_models.dart';
 
 class StorageService {
-  static late Isar isar;
+  static dynamic get isar => IsarStorageHelper.isar;
   static bool _initialized = false;
   static final bool _isHive = kIsWeb;
 
@@ -33,19 +32,7 @@ class StorageService {
       await Hive.openBox<AppSettingsEntity>('settings');
       await Hive.openBox<ReactionEntity>('reactions');
     } else {
-      String? directory;
-      final dir = await getApplicationDocumentsDirectory();
-      directory = dir.path;
-
-      isar = await Isar.open(
-        [
-          PlaylistEntitySchema,
-          HistoryItemEntitySchema,
-          AppSettingsEntitySchema,
-          ReactionEntitySchema,
-        ],
-        directory: directory,
-      );
+      await IsarStorageHelper.init();
     }
   }
 

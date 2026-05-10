@@ -4,6 +4,8 @@ analyzer:
     deprecated_member_use: ignore
     avoid_print: ignore
     use_build_context_synchronously: ignore
+    experimental_member_use: ignore
+    strict_top_level_inference: ignore
 include: package:flutter_lints/flutter.yaml
 
 linter:
