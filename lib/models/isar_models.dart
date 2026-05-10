@@ -1,4 +1,6 @@
-import 'package:isar/isar.dart' if (dart.library.js_interop) 'isar_stubs.dart' if (dart.library.html) 'isar_stubs.dart';
+import 'package:isar/isar.dart'
+    if (dart.library.js_interop) 'isar_stubs.dart'
+    if (dart.library.html) 'isar_stubs.dart';
 import 'package:hive_ce/hive.dart';
 
 part 'isar_models.g.dart';
@@ -24,10 +26,10 @@ class PlaylistEntity {
 class PlaylistItemEntity {
   @HiveField(0)
   late BookEntity book;
-  
+
   @HiveField(1)
   late AuthorEntity author;
-  
+
   @HiveField(2)
   late DateTime addedAt;
 }
@@ -44,19 +46,19 @@ class HistoryItemEntity {
 
   @HiveField(2)
   late BookEntity book;
-  
+
   @HiveField(3)
   late AuthorEntity author;
-  
+
   @HiveField(4)
   late EpisodeEntity episode;
 
   @HiveField(5)
   late double position;
-  
+
   @HiveField(6)
   late double duration;
-  
+
   @HiveField(7)
   late DateTime lastPlayed;
 }
@@ -73,10 +75,10 @@ class AppSettingsEntity {
 
   @HiveField(2)
   String language = 'bn';
-  
+
   @HiveField(3)
   String browseMode = 'writer';
-  
+
   @HiveField(4)
   bool isDarkMode = false;
 }
@@ -86,19 +88,19 @@ class AppSettingsEntity {
 class BookEntity {
   @HiveField(0)
   late String originalId;
-  
+
   @HiveField(1)
   late String title;
-  
+
   @HiveField(2)
   late String cover;
-  
+
   @HiveField(3)
   List<EpisodeEntity> episodes = [];
-  
+
   @HiveField(4)
   String? author;
-  
+
   @HiveField(5)
   String? authorImage;
 }
@@ -108,13 +110,13 @@ class BookEntity {
 class EpisodeEntity {
   @HiveField(0)
   late String id;
-  
+
   @HiveField(1)
   late String bookName;
-  
+
   @HiveField(2)
   late String audioUrl;
-  
+
   @HiveField(3)
   late String voiceOwner;
 }
@@ -124,20 +126,20 @@ class EpisodeEntity {
 class AuthorEntity {
   @HiveField(0)
   late String id;
-  
+
   @HiveField(1)
   late String name;
-  
+
   @HiveField(2)
   late String image;
 }
 
 @HiveType(typeId: 7)
-enum ReactionType { 
+enum ReactionType {
   @HiveField(0)
-  like, 
+  like,
   @HiveField(1)
-  dislike 
+  dislike
 }
 
 @collection
@@ -152,10 +154,10 @@ class ReactionEntity {
 
   @HiveField(2)
   late BookEntity book;
-  
+
   @HiveField(3)
   late AuthorEntity author;
-  
+
   @HiveField(4)
   late EpisodeEntity episode;
 

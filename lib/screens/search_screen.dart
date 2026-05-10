@@ -76,7 +76,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen>
                   onPressed: () => Navigator.pop(context),
                   tooltip: 'Back',
                 ),
-            
+
                 // Search field
                 Expanded(
                   child: Container(
@@ -129,7 +129,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen>
                     ),
                   ),
                 ),
-            
+
                 const SizedBox(width: 8),
               ],
             ),

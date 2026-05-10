@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'home_screen.dart';
 import 'settings_screen.dart';
-import 'search_screen.dart';
+import 'writer_profile_screen.dart';
 import '../widgets/mini_player.dart';
 
 class MainScreen extends ConsumerStatefulWidget {
@@ -17,7 +17,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
 
   final List<Widget> _screens = [
     const HomeScreen(),
-    const SearchScreen(),
+    const WriterProfileScreen(),
     const SettingsScreen(),
   ];
 
@@ -52,9 +52,9 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                   label: Text('Home'),
                 ),
                 NavigationRailDestination(
-                  icon: Icon(Icons.search_outlined),
-                  selectedIcon: Icon(Icons.search),
-                  label: Text('Search'),
+                  icon: Icon(Icons.person_outline),
+                  selectedIcon: Icon(Icons.person),
+                  label: Text('Writer'),
                 ),
                 NavigationRailDestination(
                   icon: Icon(Icons.settings_outlined),
@@ -118,9 +118,9 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                     label: 'Home',
                   ),
                   BottomNavigationBarItem(
-                    icon: Icon(Icons.search_outlined),
-                    activeIcon: Icon(Icons.search),
-                    label: 'Search',
+                    icon: Icon(Icons.person_outline),
+                    activeIcon: Icon(Icons.person),
+                    label: 'Writer',
                   ),
                   BottomNavigationBarItem(
                     icon: Icon(Icons.settings_outlined),
