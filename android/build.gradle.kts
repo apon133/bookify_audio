@@ -35,14 +35,14 @@ subprojects {
                 try {
                     // Try property integer
                     val setCompileSdk = android.javaClass.getMethod("setCompileSdk", Integer.TYPE)
-                    setCompileSdk.invoke(android, 35)
-                    println("Isar: Set compileSdk to 35")
+                    setCompileSdk.invoke(android, 36)
+                    println("Isar: Set compileSdk to 36")
                 } catch (e: Exception) {
                      try {
                         // Fallback to older compileSdkVersion
                         val setCompileSdkVersion = android.javaClass.getMethod("setCompileSdkVersion", String::class.java)
-                        setCompileSdkVersion.invoke(android, "android-35")
-                        println("Isar: Set compileSdkVersion to android-35")
+                        setCompileSdkVersion.invoke(android, "android-36")
+                        println("Isar: Set compileSdkVersion to android-36")
                      } catch (e2: Exception) {
                         println("Isar: Failed to set compileSdk: $e2")
                      }
