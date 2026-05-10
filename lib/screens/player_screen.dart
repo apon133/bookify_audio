@@ -223,8 +223,8 @@ class PlayerScreen extends ConsumerWidget {
                     IconButton(
                       icon: Icon(
                         audioPlayerNotifier.isPlaying
-                            ? Icons.play_circle_filled
-                            : Icons.pause_circle_filled,
+                            ? Icons.pause_circle_filled
+                            : Icons.play_circle_filled,
                         size: 64,
                         color: Theme.of(context).colorScheme.primary,
                       ),
