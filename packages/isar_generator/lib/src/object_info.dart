@@ -25,7 +25,7 @@ class ObjectInfo {
   final List<ObjectIndex> indexes;
   final List<ObjectLink> links;
 
-  int get id => xxh3(utf8.encode(isarName));
+  int get id => xxh3(utf8.encode(isarName)).toSigned(53);
 
   bool get isEmbedded => accessor == null;
 
@@ -175,7 +175,7 @@ class ObjectIndex {
   final bool unique;
   final bool replace;
 
-  late final id = xxh3(utf8.encode(name));
+  late final id = xxh3(utf8.encode(name)).toSigned(53);
 }
 
 class ObjectLink {
@@ -204,6 +204,6 @@ class ObjectLink {
     final colId = xxh3(utf8.encode(col), seed: isBacklink ? 1 : 0);
 
     final name = targetLinkIsarName ?? isarName;
-    return xxh3(utf8.encode(name), seed: colId);
+    return xxh3(utf8.encode(name), seed: colId).toSigned(53);
   }
 }

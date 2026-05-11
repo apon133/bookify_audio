@@ -1,105 +1,127 @@
-# 📚 Bookify Audio: YouTube to Audiobook Converter
+# 📚 Bookify Audio: The Ultimate YouTube to Audiobook Experience
 
-[![Flutter](https://img.shields.io/badge/Flutter-02569B?style=for-the-badge&logo=flutter&logoColor=white)](https://flutter.dev)
+![Bookify Audio Hero](assets/readme/hero.png)
+
+[![Flutter](https://img.shields.io/badge/Flutter-v3.22+-02569B?style=for-the-badge&logo=flutter&logoColor=white)](https://flutter.dev)
+[![Dart](https://img.shields.io/badge/Dart-v3.4+-0175C2?style=for-the-badge&logo=dart&logoColor=white)](https://dart.dev)
+[![WASM](https://img.shields.io/badge/WebAssembly-WASM-654FF0?style=for-the-badge&logo=webassembly&logoColor=white)](https://webassembly.org/)
 [![Isar](https://img.shields.io/badge/Database-Isar-blue?style=for-the-badge)](https://isar.dev)
-[![Riverpod](https://img.shields.io/badge/State-Riverpod-lightgrey?style=for-the-badge)](https://riverpod.dev)
+[![License](https://img.shields.io/badge/License-GPL--v3-blue.svg?style=for-the-badge)](LICENSE)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=for-the-badge)](http://makeapullrequest.com)
 
-**Bookify Audio** is a high-performance, open-source Flutter application that transforms YouTube videos into a premium audiobook experience. Designed for listeners who want to enjoy educational content, stories, and lectures without the distractions of video, Bookify Audio provides a seamless, audio-only background playback environment.
-
----
-
-## 🌟 Key Features
-
-### 🎧 Premium Audio Experience
-- **YouTube to Audio**: Instantly convert any YouTube video URL into a high-quality audio stream.
-- **Background Playback**: Keep listening even when your screen is off or you're using other apps.
-- **Smart Media Player**: Features like playback speed control (0.5x to 2.0x), skip forward/backward, and persistent position saving.
-- **SponsorBlock Integration**: Automatically skip sponsored segments in videos for an uninterrupted experience.
-
-### 📱 Modern & Intuitive UI
-- **Dynamic Mini Player**: Always-accessible controls with real-time status indicators.
-- **Fluid Animations**: Smooth Hero transitions and tactile scrolling effects.
-- **Dark & Light Mode**: A beautifully curated design system that adapts to your environment.
-- **Personalized Recommendations**: An AI-driven suggestion system based on your listening habits.
-
-### offline & Management
-- **Offline Listening**: Download your favorite books for offline use.
-- **Library Management**: Organize your listening with History, Liked books, and custom Playlists.
-- **Fast Local Storage**: Powered by **Isar Database** for lightning-fast search and data retrieval.
+**Bookify Audio** is a premium, high-performance Flutter application designed to bridge the gap between video-centric educational content and the serene experience of audiobooks. It intelligently transforms YouTube streams into a distraction-free audiobook environment with background playback, persistent history, and advanced metadata management.
 
 ---
 
-## 🛠️ Tech Stack
+## 💎 Why Bookify Audio?
 
-- **Framework**: [Flutter](https://flutter.dev) (Cross-platform Excellence)
-- **State Management**: [Riverpod](https://riverpod.dev) (Reactive & Robust)
-- **Database**: [Isar](https://isar.dev) (NoSQL High-speed Database)
-- **Audio Engine**: `youtube_player_iframe` (Web) & `youtube_player_flutter` (Mobile)
-- **Background Task**: `flutter_foreground_task` (Android/iOS)
-- **Network**: `http`, `youtube_explode_dart`
-- **UI Architecture**: Model-View-Controller (MVC) with clean separation of services.
+In an era of information overload, YouTube is a goldmine of knowledge. However, the video interface is often distracting and battery-draining. **Bookify Audio** reclaims your focus by providing a dedicated environment for listening, not just watching.
+
+### 🚀 Key Features
+
+#### 🎧 Elite Audio Engine
+- **YouTube to Audio Synergy**: High-fidelity audio streaming directly from YouTube sources.
+- **True Background Playback**: Listen with your screen off or while multitasking (powered by foreground tasks).
+- **SponsorBlock Intelligence**: Automatically skip sponsors, intros, and non-musical segments for a pure listening experience.
+- **Variable Playback Speed**: Finely tune your listening from 0.5x to 2.5x speed.
+
+#### 🧠 Smart Library Management
+- **Persistent Progress**: Never lose your place. Bookify saves your exact position across all books.
+- **Deep Recommendation Engine**: Discover new authors and books based on your unique listening profile.
+- **Isar Speed**: Experience near-instant search results and library loads thanks to the high-performance Isar NoSQL database.
+- **Dual-Storage Architecture**: Seamlessly handles data with Isar on Mobile and Hive on Web.
+
+#### 🎨 Premium Design System
+- **Material 3 Aesthetics**: Built with the latest design principles for a modern, fluid feel.
+- **Dynamic Theming**: Beautiful Dark and Light modes that respect your system settings.
+- **Glassmorphism & Micro-animations**: A tactile UI that feels alive and responsive.
+- **Multi-language Interface**: Native support for **English** and **Bengali** listeners.
 
 ---
+
+## 🛠️ Technical Masterpiece
+
+Bookify Audio isn't just an app; it's a showcase of modern Flutter engineering.
+
+| Component | Technology | Rationale |
+| :--- | :--- | :--- |
+| **Framework** | Flutter 3.22+ | Multi-platform performance and UI consistency. |
+| **State Management** | Riverpod | Robust, testable, and reactive data flow. |
+| **Database** | Isar / Hive | High-speed local persistence with web fallback. |
+| **Web Compilation** | WASM (WebAssembly) | Desktop-class performance in the browser. |
+| **Audio Engine** | Custom Wrapper | Unified API for `youtube_player_iframe` and mobile controllers. |
+| **Backgrounding** | Foreground Task | Reliable background execution on Android & iOS. |
+| **Code Generation** | Custom Isar Gen | Optimized 53-bit ID hashing for 100% JS/WASM compatibility. |
+
 
 ## 🚀 Getting Started
 
-### Prerequisites
-- Flutter SDK (Channel Stable)
-- Chrome (for Web) or Android/iOS device
-
 ### Installation
+
 1.  **Clone the Repository**:
     ```bash
     git clone https://github.com/apon133/bookify_audio.git
     cd bookify_audio
     ```
+
 2.  **Install Dependencies**:
     ```bash
     flutter pub get
     ```
-3.  **Run the Application**:
-    ```bash
-    flutter run -d chrome  # For Web
-    flutter run            # For Mobile
-    ```
 
-### Web Production Build
-To build the highly optimized production version for the web:
+3.  **Run Development Build**:
+    - **Mobile**: `flutter run`
+    - **Web**: `flutter run -d chrome`
+
+### 🏗️ Production WASM Build (Web)
+For the most performant web experience:
 ```bash
-flutter build web
+flutter build web --wasm
 ```
-*Note: Standard web builds are recommended for maximum compatibility with Isar and underlying audio plugins.*
+*Note: Our codebase is optimized to handle the large 64-bit integers generated by Isar in a WASM-safe manner.*
 
 ---
 
-## 📈 Roadmap & Contributions
+## 🗺️ Roadmap
 
-We are constantly evolving! Current progress:
-
-- [x] **Local Notifications** & Media Controls ✅
-- [x] **Background Playback** Persistence ✅
-- [x] **Full Search** Capabilities ✅
-- [x] **Download** Functionality ✅
-- [x] **Multi-language Support** (English/Bengali) ✅
-- [ ] **Sleep Timer** (Next Release)
-- [ ] **Audio Book Ratings & Social Reviews**
-- [ ] **Cloud Sync** for User Libraries
-
-**Contributions are highly encouraged!** Whether it's a bug fix, a new feature, or a design improvement, please feel free to fork and PR.
+- [x] **Full-Text Search Engine**
+- [x] **Writer Profile Biographies**
+- [x] **Cross-Platform Storage Logic**
+- [x] **SponsorBlock Integration**
+- [ ] **Sleep Timer & Alarm** (Upcoming)
+- [ ] **User Ratings & Community Reviews**
+- [ ] **Cloud Library Sync** (Firebase/Supabase)
 
 ---
 
-## ⚖️ Disclaimer & Attribution
+## 🤝 Contributing
 
-**Bookify Audio** is a free, non-commercial tool. We respect content creators:
-- This app is intended for personal, non-commercial use only.
-- All audio content is streamed directly from YouTube; we encourage users to support original creators by subscribing to their channels.
-- No copyrighted material is hosted on our servers.
+We believe in the power of open source! 
+
+1.  **Fork** the project.
+2.  **Create** your Feature Branch (`git checkout -b feature/AmazingFeature`).
+3.  **Commit** your changes (`git commit -m 'Add some AmazingFeature'`).
+4.  **Push** to the Branch (`git push origin feature/AmazingFeature`).
+5.  **Open** a Pull Request.
 
 ---
 
-## 🤝 Contact & Feedback
+## ⚖️ Disclaimer
 
-Have a suggestion or found a bug? [Open an issue](https://github.com/apon133/bookify_audio/issues) or reach out to the development team.
+**Bookify Audio** is an educational project and is not affiliated with YouTube. 
+- All audio is streamed directly from YouTube servers. 
+- We do not host any copyrighted audio files. 
+- Users are encouraged to support original creators by engaging with their content on the official YouTube platform.
 
-**Let's make audiobooks more accessible together!** 🎧📖
+---
+
+## ❤️ Show Your Support
+
+If this project helps you listen better, please give it a ⭐️ on GitHub! It helps more people discover the joy of distraction-free listening.
+
+**Developer**: [Apon Ahmed](https://github.com/apon133)
+**Website**: [Bookify-Audio](https://bookify-audio.netlify.app) (Demo)
+
+---
+
+Developed with ❤️ by the Flutter Community.

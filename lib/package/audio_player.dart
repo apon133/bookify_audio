@@ -176,33 +176,58 @@ class BookifyAudioPlayerController extends ValueNotifier<BookifyAudioPlayerState
 
   void _onWebPlayerStateChange(state) {
     if (_webController == null) return;
-    value = value.copyWith(
-      isPlaying: state.playerState == web.PlayerState.playing ||
-          state.playerState == web.PlayerState.buffering,
-    );
+    
+    // Only update isPlaying from iframe if it's a clear state change
+    final isPlayerPlaying = state.playerState == web.PlayerState.playing ||
+        state.playerState == web.PlayerState.buffering;
+    
+    // If we are in loading state, we might want to wait
+    if (value.isLoading) return;
+
+    if (value.isPlaying != isPlayerPlaying) {
+      print('BookifyAudioPlayer: Web state changed to isPlaying: $isPlayerPlaying');
+      value = value.copyWith(isPlaying: isPlayerPlaying);
+    }
   }
 
 
 
   Future<void> play() async {
+    print('BookifyAudioPlayer: play() called');
     value = value.copyWith(isPlaying: true);
     if (kIsWeb) {
       _webController?.playVideo();
     } else {
       _mobileController?.play();
     }
-    await Future.delayed(const Duration(milliseconds: 500));
+    // Give it more time on web to stabilize state
+    await Future.delayed(Duration(milliseconds: kIsWeb ? 800 : 300));
     _updateProgress();
   }
 
   Future<void> pause() async {
+    print('BookifyAudioPlayer: pause() called');
     value = value.copyWith(isPlaying: false);
     if (kIsWeb) {
       _webController?.pauseVideo();
     } else {
       _mobileController?.pause();
     }
-    await Future.delayed(const Duration(milliseconds: 500));
+    // Give it more time on web to stabilize state
+    await Future.delayed(Duration(milliseconds: kIsWeb ? 800 : 300));
+    _updateProgress();
+  }
+
+  Future<void> stop() async {
+    print('BookifyAudioPlayer: stop() called');
+    value = value.copyWith(isPlaying: false);
+    if (kIsWeb) {
+      _webController?.stopVideo();
+    } else {
+      _mobileController?.pause();
+      _mobileController?.seekTo(Duration.zero);
+    }
+    await Future.delayed(Duration(milliseconds: kIsWeb ? 800 : 300));
     _updateProgress();
   }
 
@@ -214,13 +239,32 @@ class BookifyAudioPlayerController extends ValueNotifier<BookifyAudioPlayerState
     }
   }
 
+  bool _isSeeking = false;
+
   Future<void> seekTo(double seconds) async {
+    print('BookifyAudioPlayer: seekTo() called for $seconds seconds');
+    _isSeeking = true;
+    
     if (kIsWeb) {
-      _webController?.seekTo(seconds: seconds);
+      // allowSeekAhead: true is important for Web seek performance
+      _webController?.seekTo(seconds: seconds, allowSeekAhead: true);
     } else {
       _mobileController?.seekTo(Duration(seconds: seconds.toInt()));
     }
+    
+    // Update local state immediately for UI responsiveness
     value = value.copyWith(currentTime: seconds);
+    
+    // Resume playback if it was playing
+    if (value.isPlaying) {
+      await play();
+    }
+    
+    // Keep _isSeeking true for a short duration to prevent timer from overwriting
+    // the position with old data while the iframe is still seeking.
+    Future.delayed(const Duration(milliseconds: 1500), () {
+      _isSeeking = false;
+    });
   }
 
   Future<void> seekRelative(double seconds) async {
@@ -241,59 +285,80 @@ class BookifyAudioPlayerController extends ValueNotifier<BookifyAudioPlayerState
     });
   }
 
+  bool _isUpdatingProgress = false;
+
   Future<void> _updateProgress() async {
-    double currentTime = 0;
-    double duration = 0;
-    bool isPlaying = false;
-    String title = value.title;
+    if (_isUpdatingProgress) return;
+    _isUpdatingProgress = true;
 
-    final webCtrl = _webController;
-    final mobileCtrl = _mobileController;
+    try {
+      double currentTime = 0;
+      double duration = 0;
+      bool isPlaying = false;
+      String title = value.title;
 
-    if (kIsWeb && webCtrl != null) {
-      try {
-        currentTime = await webCtrl.currentTime;
-        duration = await webCtrl.duration;
-        isPlaying = webCtrl.value.playerState == web.PlayerState.playing ||
-            webCtrl.value.playerState == web.PlayerState.buffering;
-      } catch (e) {
-        print('BookifyAudioPlayer: Error updating web progress: $e');
+      final webCtrl = _webController;
+      final mobileCtrl = _mobileController;
+
+      if (kIsWeb && webCtrl != null) {
+        try {
+          // Use metadata for duration if available (synchronous)
+          duration = webCtrl.value.metaData.duration.inSeconds.toDouble();
+          if (duration <= 0) {
+            duration = await webCtrl.duration;
+          }
+
+          if (_isSeeking) {
+            currentTime = value.currentTime;
+          } else {
+            currentTime = await webCtrl.currentTime;
+          }
+          isPlaying = value.isPlaying;
+        } catch (e) {
+          print('BookifyAudioPlayer: Error updating web progress: $e');
+          return;
+        }
+      } else if (!kIsWeb && mobileCtrl != null) {
+        final state = mobileCtrl.value;
+        currentTime = _isSeeking ? value.currentTime : state.position.inSeconds.toDouble();
+        duration = mobileCtrl.metadata.duration.inSeconds.toDouble();
+        isPlaying =
+            state.isPlaying || state.playerState == mobile.PlayerState.buffering;
+        title = mobileCtrl.metadata.title.isNotEmpty
+            ? mobileCtrl.metadata.title
+            : title;
+      } else {
         return;
       }
-    } else if (!kIsWeb && mobileCtrl != null) {
-      final state = mobileCtrl.value;
-      currentTime = state.position.inSeconds.toDouble();
-      duration = mobileCtrl.metadata.duration.inSeconds.toDouble();
-      isPlaying =
-          state.isPlaying || state.playerState == mobile.PlayerState.buffering;
-      title = mobileCtrl.metadata.title.isNotEmpty
-          ? mobileCtrl.metadata.title
-          : title;
-    } else {
-      return;
-    }
 
+      // Final check to ensure we didn't start seeking while awaiting
+      if (_isSeeking) {
+        currentTime = value.currentTime;
+      }
 
-    // SponsorBlock skipping logic
-    if (value.sponsorSegments != null && value.sponsorSegments!.isNotEmpty) {
-      for (final segment in value.sponsorSegments!) {
-        if (segment is SponsorSegment) {
-          if (currentTime >= segment.start && currentTime < segment.end) {
-            print('SponsorBlock: Skipping segment from ${segment.start} to ${segment.end}');
-            await seekTo(segment.end);
-            currentTime = segment.end;
-            break;
+      // SponsorBlock skipping logic
+      if (value.sponsorSegments != null && value.sponsorSegments!.isNotEmpty) {
+        for (final segment in value.sponsorSegments!) {
+          if (segment is SponsorSegment) {
+            if (currentTime >= segment.start && currentTime < segment.end) {
+              print('SponsorBlock: Skipping segment from ${segment.start} to ${segment.end}');
+              await seekTo(segment.end);
+              currentTime = segment.end;
+              break;
+            }
           }
         }
       }
-    }
 
-    value = value.copyWith(
-      currentTime: currentTime,
-      duration: duration,
-      isPlaying: isPlaying,
-      title: title,
-    );
+      value = value.copyWith(
+        currentTime: currentTime,
+        duration: duration,
+        isPlaying: isPlaying,
+        title: title,
+      );
+    } finally {
+      _isUpdatingProgress = false;
+    }
   }
 
   @override

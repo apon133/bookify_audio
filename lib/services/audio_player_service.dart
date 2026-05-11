@@ -154,12 +154,7 @@ class AudioPlayerService {
   }
 
   Future<void> stop() async {
-    await _controller
-        .pause(); // WebView player doesn't have a strict 'stop', pause is fine
-    _updateState(
-      isPlaying: false,
-      // position: Duration.zero, // REMOVED: Don't reset position so history is preserved
-    );
+    await _controller.stop();
   }
 
   void dispose() {
