@@ -24,6 +24,7 @@ class AudioPlayerNotifier extends ChangeNotifier {
   // Mini player visibility
   bool _isMiniPlayerVisible = false;
   bool _manuallyClosed = false;
+  String? _lastEpisodeId;
 
   bool get isMiniPlayerVisible =>
       _isMiniPlayerVisible && currentEpisode != null;
@@ -33,6 +34,13 @@ class AudioPlayerNotifier extends ChangeNotifier {
   }
 
   void _onStateChanged() {
+    // If the episode has changed, reset the manually closed flag and show the player
+    if (currentEpisode != null && currentEpisode!.id != _lastEpisodeId) {
+      _manuallyClosed = false;
+      _isMiniPlayerVisible = true;
+      _lastEpisodeId = currentEpisode!.id;
+    }
+
     // Show mini player when an episode is loaded, unless it was manually closed
     if (currentEpisode != null && !_isMiniPlayerVisible && !_manuallyClosed) {
       _isMiniPlayerVisible = true;
@@ -59,8 +67,13 @@ class AudioPlayerNotifier extends ChangeNotifier {
   Future<void> playEpisode(Episode episode, Book book, Author author,
       {double? savedPosition}) async {
     _manuallyClosed = false; // Reset when playing a new episode
+    _isMiniPlayerVisible = true;
+    notifyListeners();
+
     await _audioPlayerService.playEpisode(episode, book, author,
         savedPosition: savedPosition);
+    
+    // Ensure it's still visible after load
     _isMiniPlayerVisible = true;
     notifyListeners();
   }

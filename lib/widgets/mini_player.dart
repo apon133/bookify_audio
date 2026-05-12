@@ -20,6 +20,9 @@ class MiniPlayer extends ConsumerWidget {
     final author = audioPlayerNotifier.currentAuthor;
 
     if (episode == null || book == null || author == null) {
+      if (audioPlayerNotifier.isMiniPlayerVisible) {
+        print('MiniPlayer: Hiding because data is missing: episode=$episode, book=$book, author=$author');
+      }
       return const SizedBox.shrink();
     }
 
@@ -140,7 +143,7 @@ class MiniPlayer extends ConsumerWidget {
                             // Play/Pause button
                             IconButton(
                               icon: Icon(
-                                audioPlayerNotifier.isPlaying
+                                audioPlayerNotifier.isPlaying || audioPlayerNotifier.isLoading
                                     ? Icons.pause_circle_filled
                                     : Icons.play_circle_filled,
                                 size: 36,

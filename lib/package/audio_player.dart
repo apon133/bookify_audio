@@ -174,6 +174,14 @@ class BookifyAudioPlayerController extends ValueNotifier<BookifyAudioPlayerState
     );
   }
 
+  DateTime? _lastManualCommandTime;
+
+  bool _shouldIgnoreIframeState() {
+    if (_lastManualCommandTime == null) return false;
+    // Ignore iframe state for 2 seconds after manual command to avoid flicker
+    return DateTime.now().difference(_lastManualCommandTime!) < const Duration(milliseconds: 2000);
+  }
+
   void _onWebPlayerStateChange(state) {
     if (_webController == null) return;
     
@@ -181,8 +189,10 @@ class BookifyAudioPlayerController extends ValueNotifier<BookifyAudioPlayerState
     final isPlayerPlaying = state.playerState == web.PlayerState.playing ||
         state.playerState == web.PlayerState.buffering;
     
-    // If we are in loading state, we might want to wait
-    if (value.isLoading) return;
+    // If we are in loading state or just issued a manual command, ignore iframe state
+    if (value.isLoading || _shouldIgnoreIframeState()) {
+      return;
+    }
 
     if (value.isPlaying != isPlayerPlaying) {
       print('BookifyAudioPlayer: Web state changed to isPlaying: $isPlayerPlaying');
@@ -194,7 +204,9 @@ class BookifyAudioPlayerController extends ValueNotifier<BookifyAudioPlayerState
 
   Future<void> play() async {
     print('BookifyAudioPlayer: play() called');
+    _lastManualCommandTime = DateTime.now();
     value = value.copyWith(isPlaying: true);
+    
     if (kIsWeb) {
       _webController?.playVideo();
     } else {
@@ -207,7 +219,9 @@ class BookifyAudioPlayerController extends ValueNotifier<BookifyAudioPlayerState
 
   Future<void> pause() async {
     print('BookifyAudioPlayer: pause() called');
+    _lastManualCommandTime = DateTime.now();
     value = value.copyWith(isPlaying: false);
+    
     if (kIsWeb) {
       _webController?.pauseVideo();
     } else {
@@ -220,7 +234,9 @@ class BookifyAudioPlayerController extends ValueNotifier<BookifyAudioPlayerState
 
   Future<void> stop() async {
     print('BookifyAudioPlayer: stop() called');
+    _lastManualCommandTime = DateTime.now();
     value = value.copyWith(isPlaying: false);
+    
     if (kIsWeb) {
       _webController?.stopVideo();
     } else {

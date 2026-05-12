@@ -261,7 +261,7 @@ class BookScreen extends ConsumerWidget {
                               shape: BoxShape.circle,
                             ),
                             child: Icon(
-                              isCurrentEpisode && audioPlayerNotifier.isPlaying
+                              isCurrentEpisode && (audioPlayerNotifier.isPlaying || audioPlayerNotifier.isLoading)
                                   ? Icons.pause
                                   : Icons.play_arrow,
                               color: isCurrentEpisode

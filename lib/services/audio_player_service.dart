@@ -81,13 +81,6 @@ class AudioPlayerService {
   Future<void> playEpisode(Episode episode, Book book, Author author,
       {double? savedPosition}) async {
     try {
-      // Always stop the current playback to ensure clean state
-      if (currentEpisode != null) {
-        await _controller.pause();
-        // Give more time for the previous audio to fully stop
-        await Future.delayed(const Duration(milliseconds: 500));
-      }
-
       // Determine the position to seek to first (Hive History or provided)
       double positionToSeek = savedPosition ?? 0.0;
 
@@ -105,10 +98,11 @@ class AudioPlayerService {
         }
       }
 
-      // Reset ALL state when loading a new episode, but set position to what we expect
+      // 1. UPDATE STATE IMMEDIATELY AND SYNCHRONOUSLY
+      // This ensures UI updates (like showing the pause button) happen instantly
       _updateState(
         isLoading: true,
-        isPlaying: false,
+        isPlaying: true, // Optimistically show playing/pause state
         position:
             Duration(seconds: positionToSeek.toInt()), // Optimistic position
         duration: Duration.zero, // Reset duration to zero
@@ -116,6 +110,11 @@ class AudioPlayerService {
         currentBook: book,
         currentAuthor: author,
       );
+
+      // 2. Then do the heavy lifting
+      // Always stop the current playback to ensure clean state
+      // (We don't await this if it's not strictly necessary, or keep it short)
+      await _controller.pause();
 
       // Always load the URL. Pass the startPosition to avoid starting at 0.
       await _controller.load(episode.audioUrl, startPosition: positionToSeek);

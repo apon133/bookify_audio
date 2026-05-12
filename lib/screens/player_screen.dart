@@ -222,7 +222,7 @@ class PlayerScreen extends ConsumerWidget {
                     // Play/Pause
                     IconButton(
                       icon: Icon(
-                        audioPlayerNotifier.isPlaying
+                        audioPlayerNotifier.isPlaying || audioPlayerNotifier.isLoading
                             ? Icons.pause_circle_filled
                             : Icons.play_circle_filled,
                         size: 64,
