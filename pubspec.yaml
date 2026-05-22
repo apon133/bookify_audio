@@ -19,8 +19,6 @@ dependencies:
   icons_launcher: 
   flutter_foreground_task:
   youtube_player_flutter:
-  isar:
-  isar_flutter_libs: 
   http:
   hive_ce: 
   hive_ce_flutter:
@@ -30,8 +28,6 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: 
-  isar_generator:
-    path: packages/isar_generator
   build_runner:
   hive_ce_generator:
 

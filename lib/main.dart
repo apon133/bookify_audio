@@ -16,7 +16,7 @@ import 'package:bookify_audio/services/storage_service.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Storage Service (Hive for Web, Isar for Mobile)
+  // Initialize Storage Service (Hive)
   await StorageService.init();
 
   // Lock to portrait mode for better audio-book experience

@@ -1,14 +1,9 @@
-import 'package:flutter/foundation.dart';
-import 'isar_wrapper.dart';
 import 'package:hive_ce/hive.dart';
 import '../models/models.dart';
 import '../models/isar_models.dart';
 import 'storage_service.dart';
 
 class PlaylistService {
-  static Isar get isar => StorageService.isar;
-  static bool get _isHive => kIsWeb;
-
   static Future<void> init() async {
     await StorageService.init();
   }
@@ -89,16 +84,10 @@ class PlaylistService {
   // --- CRUD Operations ---
 
   List<Playlist> getPlaylists() {
-    if (_isHive) {
-      final box = Hive.box<PlaylistEntity>('playlists');
-      final entities = box.values.toList()
-        ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
-      return entities.map(_fromPlaylistEntity).toList();
-    } else {
-      final entities =
-          isar.playlistEntitys.where().sortByCreatedAtDesc().findAllSync();
-      return entities.map(_fromPlaylistEntity).toList();
-    }
+    final box = Hive.box<PlaylistEntity>('playlists');
+    final entities = box.values.toList()
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return entities.map(_fromPlaylistEntity).toList();
   }
 
   Future<void> createPlaylist(String name) async {
@@ -107,29 +96,17 @@ class PlaylistService {
       ..createdAt = DateTime.now()
       ..items = [];
 
-    if (_isHive) {
-      final box = Hive.box<PlaylistEntity>('playlists');
-      // Use timestamp as a simple unique ID for web
-      playlist.id = DateTime.now().millisecondsSinceEpoch;
-      await box.put(playlist.id, playlist);
-    } else {
-      await isar.writeTxn(() async {
-        await isar.playlistEntitys.put(playlist);
-      });
-    }
+    final box = Hive.box<PlaylistEntity>('playlists');
+    // Use timestamp as a simple unique ID
+    playlist.id = DateTime.now().millisecondsSinceEpoch;
+    await box.put(playlist.id, playlist);
   }
 
   Future<void> deletePlaylist(String playlistId) async {
     final id = int.tryParse(playlistId);
     if (id != null) {
-      if (_isHive) {
-        final box = Hive.box<PlaylistEntity>('playlists');
-        await box.delete(id);
-      } else {
-        await isar.writeTxn(() async {
-          await isar.playlistEntitys.delete(id);
-        });
-      }
+      final box = Hive.box<PlaylistEntity>('playlists');
+      await box.delete(id);
     }
   }
 
@@ -138,36 +115,18 @@ class PlaylistService {
     final id = int.tryParse(playlistId);
     if (id == null) return;
 
-    if (_isHive) {
-      final box = Hive.box<PlaylistEntity>('playlists');
-      final playlist = box.get(id);
-      if (playlist != null) {
-        if (playlist.items.any((item) => item.book.originalId == book.id)) {
-          return;
-        }
-        final newItem = PlaylistItemEntity()
-          ..book = _toBookEntity(book)
-          ..author = _toAuthorEntity(author)
-          ..addedAt = DateTime.now();
-        playlist.items.add(newItem);
-        await box.put(id, playlist);
+    final box = Hive.box<PlaylistEntity>('playlists');
+    final playlist = box.get(id);
+    if (playlist != null) {
+      if (playlist.items.any((item) => item.book.originalId == book.id)) {
+        return;
       }
-    } else {
-      await isar.writeTxn(() async {
-        final playlist = await isar.playlistEntitys.get(id);
-        if (playlist != null) {
-          if (playlist.items.any((item) => item.book.originalId == book.id)) {
-            return;
-          }
-          final newItem = PlaylistItemEntity()
-            ..book = _toBookEntity(book)
-            ..author = _toAuthorEntity(author)
-            ..addedAt = DateTime.now();
-          final newItems = [...playlist.items, newItem];
-          playlist.items = newItems;
-          await isar.playlistEntitys.put(playlist);
-        }
-      });
+      final newItem = PlaylistItemEntity()
+        ..book = _toBookEntity(book)
+        ..author = _toAuthorEntity(author)
+        ..addedAt = DateTime.now();
+      playlist.items.add(newItem);
+      await box.put(id, playlist);
     }
   }
 
@@ -175,25 +134,13 @@ class PlaylistService {
     final id = int.tryParse(playlistId);
     if (id == null) return;
 
-    if (_isHive) {
-      final box = Hive.box<PlaylistEntity>('playlists');
-      final playlist = box.get(id);
-      if (playlist != null) {
-        playlist.items = playlist.items
-            .where((item) => item.book.originalId != bookId)
-            .toList();
-        await box.put(id, playlist);
-      }
-    } else {
-      await isar.writeTxn(() async {
-        final playlist = await isar.playlistEntitys.get(id);
-        if (playlist != null) {
-          playlist.items = playlist.items
-              .where((item) => item.book.originalId != bookId)
-              .toList();
-          await isar.playlistEntitys.put(playlist);
-        }
-      });
+    final box = Hive.box<PlaylistEntity>('playlists');
+    final playlist = box.get(id);
+    if (playlist != null) {
+      playlist.items = playlist.items
+          .where((item) => item.book.originalId != bookId)
+          .toList();
+      await box.put(id, playlist);
     }
   }
 
@@ -201,22 +148,11 @@ class PlaylistService {
     final id = int.tryParse(playlistId);
     if (id == null) return;
 
-    if (_isHive) {
-      final box = Hive.box<PlaylistEntity>('playlists');
-      final playlist = box.get(id);
-      if (playlist != null) {
-        playlist.name = newName;
-        await box.put(id, playlist);
-      }
-    } else {
-      await isar.writeTxn(() async {
-        final playlist = await isar.playlistEntitys.get(id);
-        if (playlist != null) {
-          playlist.name = newName;
-          await isar.playlistEntitys.put(playlist);
-        }
-      });
+    final box = Hive.box<PlaylistEntity>('playlists');
+    final playlist = box.get(id);
+    if (playlist != null) {
+      playlist.name = newName;
+      await box.put(id, playlist);
     }
   }
 }
-

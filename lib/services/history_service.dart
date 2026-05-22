@@ -1,14 +1,8 @@
-import 'package:flutter/foundation.dart';
-import 'isar_wrapper.dart';
 import 'package:hive_ce/hive.dart';
 import '../models/models.dart';
 import '../models/isar_models.dart';
-import 'storage_service.dart';
 
 class HistoryService {
-  Isar get _isar => StorageService.isar;
-  bool get _isHive => kIsWeb;
-
   // --- Mappers ---
 
   BookEntity _toBookEntity(Book book) {
@@ -86,52 +80,27 @@ class HistoryService {
 
   Future<void> savePosition(Episode episode, Book book, Author author,
       double position, double duration) async {
-    if (_isHive) {
-      final box = Hive.box<HistoryItemEntity>('history');
-      // On Web, use episodeId as the key in Hive to mimic Isar unique index
-      final existingItem = box.get(episode.id);
+    final box = Hive.box<HistoryItemEntity>('history');
+    // Use episodeId as the key in Hive to mimic Isar unique index
+    final existingItem = box.get(episode.id);
 
-      final item = existingItem ?? HistoryItemEntity();
-      item
-        ..episodeId = episode.id
-        ..episode = _toEpisodeEntity(episode)
-        ..book = _toBookEntity(book)
-        ..author = _toAuthorEntity(author)
-        ..position = position
-        ..duration = duration
-        ..lastPlayed = DateTime.now();
+    final item = existingItem ?? HistoryItemEntity();
+    item
+      ..episodeId = episode.id
+      ..episode = _toEpisodeEntity(episode)
+      ..book = _toBookEntity(book)
+      ..author = _toAuthorEntity(author)
+      ..position = position
+      ..duration = duration
+      ..lastPlayed = DateTime.now();
 
-      await box.put(episode.id, item);
-    } else {
-      await _isar.writeTxn(() async {
-        final existingItem =
-            await _isar.historyItemEntitys.getByEpisodeId(episode.id);
-
-        final item = existingItem ?? HistoryItemEntity();
-        item
-          ..episodeId = episode.id
-          ..episode = _toEpisodeEntity(episode)
-          ..book = _toBookEntity(book)
-          ..author = _toAuthorEntity(author)
-          ..position = position
-          ..duration = duration
-          ..lastPlayed = DateTime.now();
-
-        await _isar.historyItemEntitys.put(item);
-      });
-    }
+    await box.put(episode.id, item);
   }
 
   List<HistoryItem> getHistory({bool uniqueByBook = true}) {
-    List<HistoryItemEntity> items;
-    if (_isHive) {
-      final box = Hive.box<HistoryItemEntity>('history');
-      items = box.values.toList()
-        ..sort((a, b) => b.lastPlayed.compareTo(a.lastPlayed));
-    } else {
-      items =
-          _isar.historyItemEntitys.where().sortByLastPlayedDesc().findAllSync();
-    }
+    final box = Hive.box<HistoryItemEntity>('history');
+    final items = box.values.toList()
+      ..sort((a, b) => b.lastPlayed.compareTo(a.lastPlayed));
 
     final historyItems = items
         .map(fromHistoryItemEntity)
@@ -163,43 +132,21 @@ class HistoryService {
   }
 
   Future<void> remove(String episodeId) async {
-    if (_isHive) {
-      final box = Hive.box<HistoryItemEntity>('history');
-      await box.delete(episodeId);
-    } else {
-      await _isar.writeTxn(() async {
-        await _isar.historyItemEntitys.deleteByEpisodeId(episodeId);
-      });
-    }
+    final box = Hive.box<HistoryItemEntity>('history');
+    await box.delete(episodeId);
   }
 
   Future<void> removeBookHistory(String bookId) async {
-    if (_isHive) {
-      final box = Hive.box<HistoryItemEntity>('history');
-      final keysToRemove = box.keys.where((key) {
-        final item = box.get(key);
-        return item != null && item.book.originalId == bookId;
-      }).toList();
-      await box.deleteAll(keysToRemove);
-    } else {
-      await _isar.writeTxn(() async {
-        await _isar.historyItemEntitys
-            .filter()
-            .book((q) => q.originalIdEqualTo(bookId))
-            .deleteAll();
-      });
-    }
+    final box = Hive.box<HistoryItemEntity>('history');
+    final keysToRemove = box.keys.where((key) {
+      final item = box.get(key);
+      return item != null && item.book.originalId == bookId;
+    }).toList();
+    await box.deleteAll(keysToRemove);
   }
 
   Future<void> clear() async {
-    if (_isHive) {
-      final box = Hive.box<HistoryItemEntity>('history');
-      await box.clear();
-    } else {
-      await _isar.writeTxn(() async {
-        await _isar.historyItemEntitys.clear();
-      });
-    }
+    final box = Hive.box<HistoryItemEntity>('history');
+    await box.clear();
   }
 }
-

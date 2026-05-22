@@ -1,15 +1,11 @@
-import 'package:isar/isar.dart'
-    if (dart.library.js_interop) 'isar_stubs.dart'
-    if (dart.library.html) 'isar_stubs.dart';
 import 'package:hive_ce/hive.dart';
 
 part 'isar_models.g.dart';
 
-@collection
 @HiveType(typeId: 0)
 class PlaylistEntity {
   @HiveField(0)
-  Id id = Isar.autoIncrement;
+  int id = 0;
 
   @HiveField(1)
   late String name;
@@ -21,7 +17,6 @@ class PlaylistEntity {
   List<PlaylistItemEntity> items = [];
 }
 
-@embedded
 @HiveType(typeId: 1)
 class PlaylistItemEntity {
   @HiveField(0)
@@ -34,14 +29,12 @@ class PlaylistItemEntity {
   late DateTime addedAt;
 }
 
-@collection
 @HiveType(typeId: 2)
 class HistoryItemEntity {
   @HiveField(0)
-  Id id = Isar.autoIncrement;
+  int id = 0;
 
   @HiveField(1)
-  @Index(unique: true, replace: true)
   late String episodeId;
 
   @HiveField(2)
@@ -63,14 +56,12 @@ class HistoryItemEntity {
   late DateTime lastPlayed;
 }
 
-@collection
 @HiveType(typeId: 3)
 class AppSettingsEntity {
   @HiveField(0)
-  Id id = Isar.autoIncrement;
+  int id = 0;
 
   @HiveField(1)
-  @Index(unique: true)
   String settingsId = 'default';
 
   @HiveField(2)
@@ -83,7 +74,6 @@ class AppSettingsEntity {
   bool isDarkMode = false;
 }
 
-@embedded
 @HiveType(typeId: 4)
 class BookEntity {
   @HiveField(0)
@@ -105,7 +95,6 @@ class BookEntity {
   String? authorImage;
 }
 
-@embedded
 @HiveType(typeId: 5)
 class EpisodeEntity {
   @HiveField(0)
@@ -121,7 +110,6 @@ class EpisodeEntity {
   late String voiceOwner;
 }
 
-@embedded
 @HiveType(typeId: 6)
 class AuthorEntity {
   @HiveField(0)
@@ -142,14 +130,12 @@ enum ReactionType {
   dislike
 }
 
-@collection
 @HiveType(typeId: 8)
 class ReactionEntity {
   @HiveField(0)
-  Id id = Isar.autoIncrement;
+  int id = 0;
 
   @HiveField(1)
-  @Index(unique: true, replace: true)
   late String episodeId;
 
   @HiveField(2)
@@ -162,7 +148,6 @@ class ReactionEntity {
   late EpisodeEntity episode;
 
   @HiveField(5)
-  @enumerated
   late ReactionType type;
 
   @HiveField(6)

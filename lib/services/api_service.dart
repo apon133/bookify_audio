@@ -1,40 +1,22 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
-import 'isar_wrapper.dart';
 import 'package:hive_ce/hive.dart';
 import '../models/models.dart';
 import '../models/isar_models.dart';
-import 'storage_service.dart';
 
 class ApiService {
   static const String defaultLanguage = 'bn';
   static const String defaultBrowseMode = 'writer';
 
-  Isar get _isar => StorageService.isar;
-  bool get _isHive => kIsWeb;
-
   // Helper to get or create settings
   AppSettingsEntity _getSettings() {
-    if (_isHive) {
-      final box = Hive.box<AppSettingsEntity>('settings');
-      var settings = box.get('default');
-      if (settings == null) {
-        settings = AppSettingsEntity();
-        box.put('default', settings);
-      }
-      return settings;
-    } else {
-      final settings = _isar.appSettingsEntitys.getBySettingsIdSync('default');
-      if (settings == null) {
-        final newSettings = AppSettingsEntity();
-        _isar.writeTxnSync(() {
-          _isar.appSettingsEntitys.putSync(newSettings);
-        });
-        return newSettings;
-      }
-      return settings;
+    final box = Hive.box<AppSettingsEntity>('settings');
+    var settings = box.get('default');
+    if (settings == null) {
+      settings = AppSettingsEntity();
+      box.put('default', settings);
     }
+    return settings;
   }
 
   String get currentLanguage => _getSettings().language;
@@ -42,39 +24,18 @@ class ApiService {
   String get currentBrowseMode => _getSettings().browseMode;
 
   Future<void> setLanguage(String languageCode) async {
-    if (_isHive) {
-      final box = Hive.box<AppSettingsEntity>('settings');
-      final settings = box.get('default') ?? AppSettingsEntity();
-      settings.language = languageCode;
-      await box.put('default', settings);
-    } else {
-      await _isar.writeTxn(() async {
-        final settings =
-            await _isar.appSettingsEntitys.getBySettingsId('default');
-        final s = settings ?? AppSettingsEntity();
-        s.language = languageCode;
-        await _isar.appSettingsEntitys.put(s);
-      });
-    }
+    final box = Hive.box<AppSettingsEntity>('settings');
+    final settings = box.get('default') ?? AppSettingsEntity();
+    settings.language = languageCode;
+    await box.put('default', settings);
   }
 
   Future<void> setBrowseMode(String mode) async {
-    if (_isHive) {
-      final box = Hive.box<AppSettingsEntity>('settings');
-      final settings = box.get('default') ?? AppSettingsEntity();
-      settings.browseMode = mode;
-      await box.put('default', settings);
-    } else {
-      await _isar.writeTxn(() async {
-        final settings =
-            await _isar.appSettingsEntitys.getBySettingsId('default');
-        final s = settings ?? AppSettingsEntity();
-        s.browseMode = mode;
-        await _isar.appSettingsEntitys.put(s);
-      });
-    }
+    final box = Hive.box<AppSettingsEntity>('settings');
+    final settings = box.get('default') ?? AppSettingsEntity();
+    settings.browseMode = mode;
+    await box.put('default', settings);
   }
-
 
   String _getJsonPath(String languageCode) {
     return 'assets/data/library_$languageCode.json';
