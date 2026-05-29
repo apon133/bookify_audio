@@ -84,6 +84,7 @@ class ApiService {
     return [
       {'code': 'bn', 'name': 'বাংলা'},
       {'code': 'en', 'name': 'English'},
+      {'code': 'hi', 'name': 'हिंदी'},
     ];
   }
 

@@ -47,5 +47,6 @@ flutter:
     - assets/app_icon.png
     - assets/splash.png
     - assets/data/library_bn.json
+    - assets/data/library_hi.json
     - assets/data/library_en.json
     - CHANGELOG.md
